@@ -15,6 +15,7 @@ import pandas as pd
 from scipy.stats import friedmanchisquare, wilcoxon
 from statsmodels.stats.multitest import multipletests
 
+from densite import build_text_from_dataframe
 from hash import compute_segment_word_lengths, resumer_longueurs_segments
 
 
@@ -59,7 +60,7 @@ def calculer_indicateurs_reponses_appairees(
     for _, row in dataframe.iterrows():
         modele = row.get(variable_modele)
         bloc = row.get(variable_bloc)
-        texte = str(row.get("texte", "") or "").strip()
+        texte = build_text_from_dataframe(pd.DataFrame([row]))
 
         if pd.isna(modele) or pd.isna(bloc) or not texte:
             reponses_ignorees += 1
