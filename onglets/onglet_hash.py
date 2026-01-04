@@ -33,6 +33,13 @@ from hash import (
     compute_segment_word_lengths,
     segments_with_word_lengths,
 )
+from KolmogorovSmirnov import (
+    ResultatKSTest,
+    calculer_test_ks,
+    comparer_modalites_par_paires,
+    extraire_longueurs_par_modalite,
+    p_value_par_permutation,
+)
 from simicosinus import concatenate_texts_with_headers
 
 
@@ -353,3 +360,200 @@ ponctuation forte (. / ? / ! / ; /:) ferme aussi le segment.
             st.altair_chart(
                 dispersion_chart + lms_points, use_container_width=True
             )
+
+    st.markdown("---")
+    st.subheader("Comparaison de distributions (KS)")
+    st.write(
+        "Comparez les distributions de longueurs de segments entre modalités avec le test"
+        " de Kolmogorov–Smirnov à deux échantillons. Les longueurs sont calculées avec"
+        " les mêmes réglages de segmentation/tokenisation que ci-dessus."
+    )
+
+    variable_ks = st.selectbox(
+        "Variable pour la comparaison des distributions",
+        hash_variables,
+        help=(
+            "Choisissez la variable (modèle, prompt…) dont vous voulez comparer les distributions"
+            " de longueurs de segments."
+        ),
+    )
+
+    longueurs_par_modalite = extraire_longueurs_par_modalite(
+        hash_filtered_df,
+        variable_ks,
+        filtered_connectors,
+        segmentation_mode=segmentation_mode,
+        tokenization_mode=tokenization_mode,
+    )
+
+    if not longueurs_par_modalite:
+        st.info(
+            "Impossible de calculer les distributions : aucune longueur de segment n'a été"
+            " trouvée pour les modalités disponibles."
+        )
+        return
+
+    modalites_disponibles = sorted(longueurs_par_modalite)
+
+    comparer_toutes = st.checkbox(
+        "Comparer toutes les modalités par paires",
+        help=(
+            "Calcule le test KS pour toutes les paires de modalités de la variable choisie"
+            " et applique éventuellement une correction pour comparaisons multiples."
+        ),
+    )
+
+    if comparer_toutes:
+        methodes_correction = {
+            "Aucune": None,
+            "Bonferroni": "bonferroni",
+            "Holm": "holm",
+            "Benjamini–Hochberg (FDR)": "fdr_bh",
+        }
+        methode_label = st.selectbox(
+            "Méthode de correction",
+            list(methodes_correction.keys()),
+            help=(
+                "Choisissez la méthode d'ajustement des p-values : Bonferroni et Holm sont"
+                " plus conservateurs, Benjamini–Hochberg contrôle le taux de fausses"
+                " découvertes."
+            ),
+        )
+
+        resultats_paires = comparer_modalites_par_paires(
+            longueurs_par_modalite, methode_correction=methodes_correction[methode_label]
+        )
+
+        if resultats_paires.empty:
+            st.info("Aucune paire exploitable (tailles d'échantillon insuffisantes ou données vides).")
+            return
+
+        st.write(
+            "Tableau trié par p-value" + (" ajustée" if methodes_correction[methode_label] else "")
+        )
+        st.dataframe(
+            resultats_paires.rename(
+                columns={
+                    "modalite_a": "Modalité A",
+                    "modalite_b": "Modalité B",
+                    "D": "D (écart max)",
+                    "p_brute": "p-value brute",
+                    "p_ajustee": "p-value ajustée",
+                    "n_a": "nA",
+                    "n_b": "nB",
+                    "rejette": "Rejet H0",
+                }
+            ),
+            use_container_width=True,
+        )
+        st.caption(
+            "D mesure l'écart maximal entre les proportions cumulées (0 = distributions identiques,"
+            " 1 = distributions disjointes). p-value brute et ajustée sont affichées sans ambiguïté."
+        )
+        return
+
+    if len(modalites_disponibles) < 2:
+        st.info("Au moins deux modalités sont nécessaires pour une comparaison KS.")
+        return
+
+    modalite_a = st.selectbox("Modalité A", modalites_disponibles, index=0)
+    modalite_b = st.selectbox(
+        "Modalité B",
+        modalites_disponibles,
+        index=1 if len(modalites_disponibles) > 1 else 0,
+        help="Choisissez une modalité différente pour comparer deux distributions.",
+    )
+
+    if modalite_a == modalite_b:
+        st.warning("Sélectionnez deux modalités distinctes pour lancer la comparaison KS.")
+        return
+
+    longueurs_a = longueurs_par_modalite.get(modalite_a, [])
+    longueurs_b = longueurs_par_modalite.get(modalite_b, [])
+
+    resultat_ks: ResultatKSTest | None = calculer_test_ks(longueurs_a, longueurs_b)
+
+    if resultat_ks is None:
+        st.info("Impossible de calculer le test KS : échantillons vides ou trop petits.")
+        return
+
+    st.markdown(
+        f"**D = {resultat_ks.D:.4f}**, **p-value brute = {resultat_ks.p_value:.4g}**, "
+        f"**nA = {resultat_ks.n_a}**, **nB = {resultat_ks.n_b}**"
+    )
+    st.caption(
+        "D représente l'écart maximal entre les proportions cumulées des deux distributions (entre 0 et 1)."
+    )
+
+    if resultat_ks.ecart_max:
+        st.write(
+            "Écart maximal atteint à L = {longueur:.0f} mots : {prop_a:.2f} vs {prop_b:.2f}"
+            " (écart = {ecart:.2f}).".format(
+                longueur=resultat_ks.ecart_max["longueur"],
+                prop_a=resultat_ks.ecart_max["proportion_a"],
+                prop_b=resultat_ks.ecart_max["proportion_b"],
+                ecart=resultat_ks.ecart_max["ecart"],
+            )
+        )
+
+    utiliser_permutation = st.checkbox(
+        "Calculer aussi une p-value par permutation (option empirique)",
+        help=(
+            "Approche plus coûteuse mais robuste : mélange les longueurs, recombine deux groupes"
+            " de même taille et estime la proportion de D_perm >= D_observé."
+        ),
+    )
+
+    if utiliser_permutation:
+        n_permutations = int(
+            st.number_input(
+                "Nombre de permutations", min_value=100, max_value=20000, value=2000, step=100
+            )
+        )
+        total_obs = resultat_ks.n_a + resultat_ks.n_b
+        if total_obs > 5000:
+            st.warning(
+                "Attention : le calcul par permutation peut être long pour des échantillons volumineux."
+            )
+
+        progression = st.progress(0.0)
+        with st.spinner("Calcul des permutations en cours..."):
+            p_perm = p_value_par_permutation(
+                longueurs_a,
+                longueurs_b,
+                n_permutations=n_permutations,
+                progress_callback=lambda avance: progression.progress(min(avance, 1.0)),
+            )
+
+        if p_perm is not None:
+            resultat_ks.p_value_permutation = p_perm
+            st.markdown(f"p-value par permutation ≈ {p_perm:.4g}")
+        else:
+            st.info("P-value par permutation non calculée (échantillons vides ou paramètres invalides).")
+
+    if not resultat_ks.ecdf_a.empty and not resultat_ks.ecdf_b.empty:
+        ecdf_plot_df = pd.concat(
+            [
+                resultat_ks.ecdf_a.assign(modalite=modalite_a),
+                resultat_ks.ecdf_b.assign(modalite=modalite_b),
+            ]
+        )
+
+        ecdf_chart = (
+            alt.Chart(ecdf_plot_df)
+            .mark_line(interpolate="step-after")
+            .encode(
+                x=alt.X("longueur:Q", title="Longueur de segment (mots)"),
+                y=alt.Y("proportion_cumulee:Q", title="Proportion cumulée"),
+                color=alt.Color("modalite:N", title="Modalité"),
+                tooltip=[
+                    alt.Tooltip("modalite:N", title="Modalité"),
+                    alt.Tooltip("longueur:Q", title="Longueur"),
+                    alt.Tooltip("proportion_cumulee:Q", title="Proportion cumulée", format=".2f"),
+                ],
+            )
+        )
+
+        st.markdown("#### Fonctions de répartition cumulée (ECDF)")
+        st.altair_chart(ecdf_chart, use_container_width=True)
+
