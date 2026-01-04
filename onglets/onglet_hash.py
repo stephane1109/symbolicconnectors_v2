@@ -22,6 +22,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
+from densite import build_text_from_dataframe
 from ecartype import compute_length_standard_deviation, standard_deviation_by_modality
 from friedeman import (
     calculer_indicateurs_reponses_appairees,
@@ -167,14 +168,15 @@ ponctuation forte (. / ? / ! / ; /:) ferme aussi le segment.
         )
         return
 
-    hash_text = concatenate_texts_with_headers(
+    hash_text = build_text_from_dataframe(hash_filtered_df)
+    export_text = concatenate_texts_with_headers(
         hash_filtered_df, selected_hash_variables
     )
 
-    if hash_text:
+    if export_text:
         st.download_button(
             label="Télécharger les textes concaténés",
-            data=hash_text,
+            data=export_text,
             file_name="textes_concatenation_hash.txt",
             mime="text/plain",
             help=(
