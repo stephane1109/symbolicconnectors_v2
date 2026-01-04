@@ -22,6 +22,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
+from densite import build_text_from_dataframe
 from ecartype import compute_length_standard_deviation, standard_deviation_by_modality
 from friedeman import (
     calculer_indicateurs_reponses_appairees,
@@ -47,13 +48,6 @@ from KolmogorovSmirnov import (
     comparer_modalites_par_paires,
     extraire_longueurs_par_modalite,
     p_value_par_permutation,
-)
-from mann_whitney import (
-    ResultatKruskal,
-    ResultatMannWhitney,
-    comparaisons_post_hoc,
-    effectuer_test_kruskal,
-    effectuer_test_mann_whitney,
 )
 from simicosinus import concatenate_texts_with_headers
 
@@ -174,14 +168,15 @@ ponctuation forte (. / ? / ! / ; /:) ferme aussi le segment.
         )
         return
 
-    hash_text = concatenate_texts_with_headers(
+    hash_text = build_text_from_dataframe(hash_filtered_df)
+    export_text = concatenate_texts_with_headers(
         hash_filtered_df, selected_hash_variables
     )
 
-    if hash_text:
+    if export_text:
         st.download_button(
             label="Télécharger les textes concaténés",
-            data=hash_text,
+            data=export_text,
             file_name="textes_concatenation_hash.txt",
             mime="text/plain",
             help=(
@@ -488,87 +483,6 @@ ponctuation forte (. / ? / ! / ; /:) ferme aussi le segment.
                 for modalite, groupe in resumes_reponses.groupby("modalite")
                 if modalite in (modalites_selectionnees or modalites_possibles)
             }
-
-            tailles = {m: len(vals) for m, vals in donnees_par_modalite.items() if vals}
-            modalites_valides = [m for m, n in tailles.items() if n >= 1]
-
-            if not modalites_valides or len(modalites_valides) < 2:
-                st.info(
-                    "Au moins deux modalités avec des réponses exploitables sont nécessaires pour lancer les tests."
-                )
-            else:
-                modalites_insuffisantes = [m for m, n in tailles.items() if n < 5]
-                if modalites_insuffisantes:
-                    st.warning(
-                        "Certaines modalités ont moins de 5 réponses (" + ", ".join(modalites_insuffisantes) + ") : test non lancé."
-                    )
-                else:
-                    if len(modalites_valides) == 2:
-                        mod_a, mod_b = modalites_valides[:2]
-                        resultat_mw: ResultatMannWhitney | None = effectuer_test_mann_whitney(
-                            donnees_par_modalite.get(mod_a, []),
-                            donnees_par_modalite.get(mod_b, []),
-                        )
-                        if resultat_mw is None:
-                            st.info("Test de Mann–Whitney impossible : données insuffisantes ou vides.")
-                        else:
-                            st.markdown("#### Test de Mann–Whitney (2 modalités)")
-                            st.markdown(
-                                f"Statistique U = {resultat_mw.statistique:.4f}, p-value = {resultat_mw.p_value:.4g}, nA = {resultat_mw.n_a}, nB = {resultat_mw.n_b}"
-                            )
-                    else:
-                        resultat_kruskal: ResultatKruskal | None = effectuer_test_kruskal(
-                            donnees_par_modalite
-                        )
-                        if resultat_kruskal is None:
-                            st.info("Test de Kruskal–Wallis impossible : données insuffisantes.")
-                        else:
-                            st.markdown("#### Test de Kruskal–Wallis (plus de deux modalités)")
-                            st.markdown(
-                                f"H = {resultat_kruskal.statistique:.4f}, p-value = {resultat_kruskal.p_value:.4g}, N = {resultat_kruskal.effectif_total}"
-                            )
-
-                            if st.checkbox(
-                                "Afficher les comparaisons post-hoc (Mann–Whitney par paires)",
-                                help="Active des comparaisons deux à deux avec option d'ajustement des p-values.",
-                            ):
-                                corrections = {
-                                    "Aucune": None,
-                                    "Holm": "holm",
-                                    "Bonferroni": "bonferroni",
-                                    "Benjamini–Hochberg": "fdr_bh",
-                                }
-                                methode_corr = st.selectbox(
-                                    "Méthode d'ajustement des p-values",
-                                    list(corrections.keys()),
-                                    help="Choisissez la méthode d'ajustement des comparaisons multiples.",
-                                )
-
-                                resultats_post_hoc = comparaisons_post_hoc(
-                                    donnees_par_modalite,
-                                    methode_correction=corrections[methode_corr],
-                                )
-
-                                if resultats_post_hoc.empty:
-                                    st.info(
-                                        "Aucune comparaison post-hoc exploitable (données insuffisantes ou paires vides)."
-                                    )
-                                else:
-                                    st.dataframe(
-                                        resultats_post_hoc.rename(
-                                            columns={
-                                                "modalite_a": "Modalité A",
-                                                "modalite_b": "Modalité B",
-                                                "statistique": "U (Mann–Whitney)",
-                                                "p_brute": "p-value brute",
-                                                "p_ajustee": "p-value ajustée",
-                                                "n_a": "nA",
-                                                "n_b": "nB",
-                                                "rejette": "Rejet H0",
-                                            }
-                                        ),
-                                        use_container_width=True,
-                                    )
 
             st.markdown("#### Distribution de l'indicateur par modalité")
             box_chart = (
