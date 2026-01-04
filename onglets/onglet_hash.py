@@ -48,7 +48,7 @@ from KolmogorovSmirnov import (
     extraire_longueurs_par_modalite,
     p_value_par_permutation,
 )
-from mann_whitney import ResultatKruskal, effectuer_test_kruskal
+from kruskal import ResultatKruskal, effectuer_test_kruskal
 from simicosinus import concatenate_texts_with_headers
 
 
