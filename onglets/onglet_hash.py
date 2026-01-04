@@ -23,6 +23,12 @@ import pandas as pd
 import streamlit as st
 
 from ecartype import compute_length_standard_deviation, standard_deviation_by_modality
+from friedeman import (
+    calculer_indicateurs_reponses_appairees,
+    calculer_statistique_friedman,
+    construire_tableau_apparie,
+    tests_post_hoc_wilcoxon,
+)
 from fcts_utils import render_connectors_reminder
 from hash import (
     ECART_TYPE_EXPLANATION,
@@ -580,6 +586,214 @@ ponctuation forte (. / ? / ! / ; /:) ferme aussi le segment.
             )
 
             st.altair_chart(box_chart, use_container_width=True)
+
+    st.markdown("---")
+    st.subheader("Test de Friedman (modèles appariés par prompt)")
+    st.caption(
+        "Le test de Friedman compare plusieurs conditions appariées : ici, chaque prompt est un bloc et chaque modèle est une condition. Il teste si au moins un modèle diffère des autres."
+    )
+
+    if len(hash_variables) < 2:
+        st.info(
+            "Sélectionnez au moins deux variables dans vos données (par exemple *modele et *prompt) pour lancer le test de Friedman."
+        )
+    else:
+        variable_modele = st.selectbox(
+            "Variable correspondant aux modèles",
+            hash_variables,
+            help="Choisissez la variable indiquant les modèles (ex. *modele).",
+        )
+
+        variables_bloc = [var for var in hash_variables if var != variable_modele]
+        variable_bloc = st.selectbox(
+            "Variable correspondant aux blocs d'appariement (prompts)",
+            variables_bloc if variables_bloc else hash_variables,
+            help="Choisissez la variable qui identifie les blocs appariés (ex. *prompt ou *question).",
+        )
+
+        indicateur_labels_friedman = {
+            "LMS (moyenne des segments)": "lms",
+            "Écart-type des segments": "ecart_type",
+            "Coefficient de variation": "coefficient_variation",
+            "Médiane des segments": "mediane",
+            "Proportion de segments courts": "proportion_courts",
+        }
+
+        choix_indicateur_friedman = st.selectbox(
+            "Indicateur à comparer entre modèles",
+            list(indicateur_labels_friedman.keys()),
+            index=0,
+        )
+        indicateur_cible = indicateur_labels_friedman[choix_indicateur_friedman]
+
+        seuil_court_friedman = int(
+            st.number_input(
+                "Seuil (mots) pour définir un segment court (Friedman)",
+                min_value=1,
+                max_value=200,
+                value=10,
+                step=1,
+                help="Utilisé pour la proportion de segments courts dans le test de Friedman.",
+            )
+        )
+
+        methode_agregation = st.radio(
+            "Agrégation si plusieurs réponses par couple (bloc, modèle)",
+            ["moyenne", "mediane"],
+            format_func=lambda val: "Moyenne" if val == "moyenne" else "Médiane",
+            help="Si plusieurs réponses existent pour un même prompt et modèle, choisit comment les résumer.",
+        )
+
+        indicateurs_reponses, reponses_ignorees_friedman = calculer_indicateurs_reponses_appairees(
+            hash_filtered_df,
+            variable_modele,
+            variable_bloc,
+            filtered_connectors,
+            segmentation_mode,
+            tokenization_mode,
+            seuil_segment_court=seuil_court_friedman,
+        )
+
+        if indicateurs_reponses.empty:
+            st.info(
+                "Impossible de construire le tableau apparié : aucune réponse exploitable avec les variables choisies."
+            )
+            if reponses_ignorees_friedman:
+                st.caption(
+                    f"Réponses ignorées (vides ou sans segments détectés) : {reponses_ignorees_friedman}"
+                )
+        else:
+            tableau_apparie, prompts_initiaux, prompts_exclus = construire_tableau_apparie(
+                indicateurs_reponses,
+                variable_modele,
+                variable_bloc,
+                indicateur_cible,
+                methode_agregation=methode_agregation,
+            )
+
+            if reponses_ignorees_friedman:
+                st.caption(
+                    f"Réponses ignorées (vides ou sans segments détectés) : {reponses_ignorees_friedman}"
+                )
+
+            if tableau_apparie.empty:
+                st.info(
+                    "Tableau apparié vide ou incomplet : aucun prompt ne contient toutes les modalités sélectionnées."
+                )
+            else:
+                nb_modeles = tableau_apparie.shape[1]
+                modeles_list = list(tableau_apparie.columns)
+                prompts_complets = tableau_apparie.index.tolist()
+                st.markdown(
+                    f"**Modèles inclus (k = {nb_modeles})** : {', '.join(str(m) for m in modeles_list)}"
+                )
+                st.markdown(
+                    f"Prompts initiaux : {len(prompts_initiaux)} | Prompts complets utilisés : {len(prompts_complets)} | Prompts exclus : {len(prompts_exclus)}"
+                )
+
+                if prompts_exclus:
+                    st.caption("Prompts exclus (données manquantes) : " + ", ".join(map(str, prompts_exclus)))
+
+                resultat_friedman = calculer_statistique_friedman(tableau_apparie)
+
+                if resultat_friedman is None:
+                    st.info("Test de Friedman impossible : au moins deux modèles et deux prompts complets sont requis.")
+                else:
+                    st.markdown(
+                        f"Chi² de Friedman = {resultat_friedman['statistique']:.4f}, p-value = {resultat_friedman['p_value']:.4g}"
+                    )
+                    st.markdown(
+                        f"Kendall W = {resultat_friedman['kendall_w']:.4f} (n = {resultat_friedman['n_prompts']}, k = {resultat_friedman['k_modeles']})"
+                    )
+
+                st.dataframe(
+                    tableau_apparie.reset_index().rename(columns={variable_bloc: "Bloc / prompt"}),
+                    use_container_width=True,
+                )
+
+                if st.checkbox(
+                    "Afficher les comparaisons post-hoc (Wilcoxon signé-rang)",
+                    help="Active des comparaisons deux à deux entre modèles avec ajustement des p-values.",
+                ):
+                    corrections = {
+                        "Aucun": None,
+                        "Holm": "holm",
+                        "Bonferroni": "bonferroni",
+                        "Benjamini–Hochberg": "fdr_bh",
+                    }
+                    methode_corr = st.selectbox(
+                        "Méthode d'ajustement des p-values (post-hoc)",
+                        list(corrections.keys()),
+                    )
+
+                    if tableau_apparie.shape[0] < 3:
+                        st.warning(
+                            "Attention : moins de 3 prompts appariés, les tests de Wilcoxon peuvent manquer de puissance."
+                        )
+
+                    resultats_post_hoc = tests_post_hoc_wilcoxon(
+                        tableau_apparie, methode_correction=corrections[methode_corr]
+                    )
+
+                    if resultats_post_hoc.empty:
+                        st.info("Aucune comparaison post-hoc exploitable (prompts complets insuffisants ou paires invalides).")
+                    else:
+                        st.dataframe(
+                            resultats_post_hoc.rename(
+                                columns={
+                                    "modele_a": "Modèle A",
+                                    "modele_b": "Modèle B",
+                                    "statistique": "Statistique (Wilcoxon)",
+                                    "p_brute": "p-value brute",
+                                    "p_ajustee": "p-value ajustée",
+                                    "n": "Prompts",
+                                }
+                            ),
+                            use_container_width=True,
+                        )
+
+                long_format = tableau_apparie.reset_index().melt(
+                    id_vars=variable_bloc, var_name="modele", value_name="valeur"
+                )
+
+                st.markdown("#### Visualisation des valeurs appariées")
+                box_chart_appaire = (
+                    alt.Chart(long_format)
+                    .mark_boxplot()
+                    .encode(
+                        x=alt.X("modele:N", title="Modèle"),
+                        y=alt.Y("valeur:Q", title=choix_indicateur_friedman),
+                        color=alt.Color("modele:N", title="Modèle"),
+                        tooltip=[
+                            alt.Tooltip("modele:N", title="Modèle"),
+                            alt.Tooltip("valeur:Q", title="Valeur", format=".3f"),
+                            alt.Tooltip(variable_bloc + ":N", title="Bloc/prompt"),
+                        ],
+                    )
+                )
+
+                st.altair_chart(box_chart_appaire, use_container_width=True)
+
+                if st.checkbox(
+                    "Afficher le graphique en lignes (spaghetti) par prompt",
+                    help="Visualise l'effet prompt en reliant les valeurs des modèles pour chaque bloc.",
+                ):
+                    spaghetti_chart = (
+                        alt.Chart(long_format)
+                        .mark_line(point=True)
+                        .encode(
+                            x=alt.X("modele:N", title="Modèle"),
+                            y=alt.Y("valeur:Q", title=choix_indicateur_friedman),
+                            color=alt.Color(variable_bloc + ":N", title="Bloc/prompt", legend=None),
+                            tooltip=[
+                                alt.Tooltip(variable_bloc + ":N", title="Bloc/prompt"),
+                                alt.Tooltip("modele:N", title="Modèle"),
+                                alt.Tooltip("valeur:Q", title="Valeur", format=".3f"),
+                            ],
+                        )
+                    )
+
+                    st.altair_chart(spaghetti_chart, use_container_width=True)
 
     st.markdown("---")
     st.subheader("Comparaison de distributions (KS)")
