@@ -10,7 +10,9 @@ from __future__ import annotations
 import re
 from statistics import mean
 from functools import lru_cache
-from typing import Dict, Iterable, List, Literal, Optional
+from typing import Dict, Iterable, List, Literal, Optional, Tuple
+
+import numpy as np
 
 import pandas as pd
 
@@ -391,3 +393,131 @@ def average_segment_length_by_modality(
         )
 
     return pd.DataFrame(rows).sort_values("modalite").reset_index(drop=True)
+
+
+def resumer_longueurs_segments(
+    longueurs: List[int], seuil_segment_court: int = 10
+) -> Optional[Dict[str, float]]:
+    """Résumer les longueurs d'une réponse avec des indicateurs robustes.
+
+    - LMS : moyenne des longueurs non nulles
+    - Écart-type : dispersion absolue des longueurs
+    - Coefficient de variation : écart-type / moyenne (0 si moyenne nulle)
+    - Médiane : valeur médiane des longueurs
+    - Proportion de segments courts : part des segments dont la longueur est
+      inférieure ou égale au ``seuil_segment_court``.
+    """
+
+    if not longueurs:
+        return None
+
+    valeurs = np.array(longueurs, dtype=float)
+    lms = float(np.mean(valeurs)) if valeurs.size else 0.0
+    ecart_type = float(np.std(valeurs)) if valeurs.size else 0.0
+    coefficient_variation = ecart_type / lms if lms else 0.0
+    mediane = float(np.median(valeurs)) if valeurs.size else 0.0
+    proportion_courts = 0.0
+
+    if seuil_segment_court > 0:
+        proportion_courts = float(np.mean(valeurs <= seuil_segment_court))
+
+    return {
+        "lms": lms,
+        "ecart_type": ecart_type,
+        "coefficient_variation": coefficient_variation,
+        "mediane": mediane,
+        "proportion_courts": proportion_courts,
+    }
+
+
+def resumer_reponses_par_modalite(
+    dataframe: pd.DataFrame,
+    variable: Optional[str],
+    connectors: Dict[str, str],
+    modalities: Optional[Iterable[str]] = None,
+    segmentation_mode: SegmentationMode = "connecteurs",
+    tokenization_mode: TokenizationMode = "regex",
+    seuil_segment_court: int = 10,
+) -> Tuple[pd.DataFrame, int]:
+    """Calculer les indicateurs par réponse et les regrouper par modalité."""
+
+    if dataframe.empty or not variable or variable not in dataframe.columns:
+        return pd.DataFrame(), 0
+
+    filtered_df = filter_dataframe_by_modalities(dataframe, variable, modalities)
+
+    if filtered_df.empty:
+        return pd.DataFrame(), 0
+
+    lignes: List[Dict[str, float | str]] = []
+    reponses_ignorees = 0
+
+    for _, row in filtered_df.iterrows():
+        modalite = row.get(variable)
+        texte = str(row.get("texte", "") or "").strip()
+
+        if pd.isna(modalite) or not texte:
+            reponses_ignorees += 1
+            continue
+
+        longueurs = compute_segment_word_lengths(
+            texte, connectors, segmentation_mode, tokenization_mode
+        )
+
+        resume = resumer_longueurs_segments(longueurs, seuil_segment_court)
+
+        if resume is None:
+            reponses_ignorees += 1
+            continue
+
+        lignes.append({"modalite": modalite, **resume})
+
+    return pd.DataFrame(lignes), reponses_ignorees
+
+
+def statistiques_par_modalite(resumes: pd.DataFrame) -> pd.DataFrame:
+    """Agrégations (moyenne, médiane, écart-type, CV, proportion courte) par modalité."""
+
+    if resumes.empty or "modalite" not in resumes.columns:
+        return pd.DataFrame()
+
+    colonnes_mesures = [
+        "lms",
+        "mediane",
+        "ecart_type",
+        "coefficient_variation",
+        "proportion_courts",
+    ]
+
+    for colonne in colonnes_mesures:
+        if colonne not in resumes.columns:
+            return pd.DataFrame()
+
+    regroupement = resumes.groupby("modalite")
+
+    stats_df = regroupement[colonnes_mesures].agg(
+        {
+            "lms": "mean",
+            "mediane": "median",
+            "ecart_type": "mean",
+            "coefficient_variation": "mean",
+            "proportion_courts": "mean",
+        }
+    )
+
+    stats_df["n_reponses"] = regroupement.size()
+
+    return (
+        stats_df.reset_index()
+        .rename(
+            columns={
+                "modalite": "modalite",
+                "lms": "lms_moyenne",
+                "mediane": "mediane_reponses",
+                "ecart_type": "ecart_type_moyen",
+                "coefficient_variation": "cv_moyen",
+                "proportion_courts": "proportion_courts_moyenne",
+            }
+        )
+        .sort_values("modalite")
+    )

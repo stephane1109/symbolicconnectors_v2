@@ -31,6 +31,8 @@ from hash import (
     average_segment_length,
     average_segment_length_by_modality,
     compute_segment_word_lengths,
+    resumer_reponses_par_modalite,
+    statistiques_par_modalite,
     segments_with_word_lengths,
 )
 from KolmogorovSmirnov import (
@@ -39,6 +41,13 @@ from KolmogorovSmirnov import (
     comparer_modalites_par_paires,
     extraire_longueurs_par_modalite,
     p_value_par_permutation,
+)
+from mann_whitney import (
+    ResultatKruskal,
+    ResultatMannWhitney,
+    comparaisons_post_hoc,
+    effectuer_test_kruskal,
+    effectuer_test_mann_whitney,
 )
 from simicosinus import concatenate_texts_with_headers
 
@@ -360,6 +369,217 @@ ponctuation forte (. / ? / ! / ; /:) ferme aussi le segment.
             st.altair_chart(
                 dispersion_chart + lms_points, use_container_width=True
             )
+
+    st.markdown("### Inférence au niveau réponse")
+    st.caption(
+        "Les tests sont réalisés au niveau des réponses (une valeur par réponse), afin de respecter l'indépendance statistique ; les segments d'une même réponse ne sont pas considérés comme des observations indépendantes."
+    )
+
+    if not hash_variables:
+        st.info(
+            "Aucune variable disponible pour l'inférence. Importez un corpus contenant des variables (ex. modèle, prompt)."
+        )
+        st.markdown("---")
+    else:
+        variable_inference = st.selectbox(
+            "Variable pour l'inférence par réponse",
+            hash_variables,
+            help=(
+                "Sélectionnez la variable dont vous souhaitez comparer les modalités en considérant chaque réponse comme une observation indépendante."
+            ),
+        )
+
+        modalites_possibles = sorted(
+            hash_filtered_df[variable_inference].dropna().unique().tolist()
+        )
+
+        modalites_selectionnees = st.multiselect(
+            "Modalités à comparer",
+            modalites_possibles,
+            default=modalites_possibles,
+            help="Choisissez les modalités à inclure dans les tests statistiques.",
+        )
+
+        seuil_court = int(
+            st.number_input(
+                "Seuil (mots) pour qualifier un segment de court",
+                min_value=1,
+                max_value=200,
+                value=10,
+                step=1,
+                help="Utilisé pour calculer la proportion de segments courts par réponse.",
+            )
+        )
+
+        indicateur_labels = {
+            "LMS (moyenne des segments)": "lms",
+            "Écart-type des segments": "ecart_type",
+            "Coefficient de variation": "coefficient_variation",
+            "Médiane des segments": "mediane",
+            "Proportion de segments courts": "proportion_courts",
+        }
+
+        choix_indicateur = st.selectbox(
+            "Indicateur pour le test statistique",
+            list(indicateur_labels.keys()),
+            index=0,
+        )
+        indicateur_colonne = indicateur_labels[choix_indicateur]
+
+        resumes_reponses, reponses_ignorees = resumer_reponses_par_modalite(
+            hash_filtered_df,
+            variable_inference,
+            filtered_connectors,
+            modalites_selectionnees or None,
+            segmentation_mode,
+            tokenization_mode,
+            seuil_segment_court=seuil_court,
+        )
+
+        if resumes_reponses.empty:
+            st.info(
+                "Impossible de calculer les indicateurs par réponse : aucune réponse exploitable après filtrage ou segmentation."
+            )
+            if reponses_ignorees:
+                st.caption(f"Réponses ignorées (sans segments détectés) : {reponses_ignorees}")
+        else:
+            if reponses_ignorees:
+                st.caption(f"Réponses ignorées (sans segments détectés) : {reponses_ignorees}")
+
+            stats_modalites = statistiques_par_modalite(resumes_reponses)
+
+            if not stats_modalites.empty:
+                st.markdown("#### Tableau récapitulatif par modalité (valeurs moyennes par réponse)")
+                st.dataframe(
+                    stats_modalites.rename(
+                        columns={
+                            "modalite": "Modalité",
+                            "lms_moyenne": "LMS moyenne",
+                            "mediane_reponses": "Médiane (réponses)",
+                            "ecart_type_moyen": "Écart-type moyen",
+                            "cv_moyen": "Coefficient de variation moyen",
+                            "proportion_courts_moyenne": "Proportion segments courts",
+                            "n_reponses": "Réponses utilisées",
+                        }
+                    ),
+                    use_container_width=True,
+                )
+
+            effectifs = (
+                resumes_reponses.groupby("modalite")[indicateur_colonne]
+                .size()
+                .reset_index(name="n")
+                .rename(columns={"modalite": "Modalité", "n": "Réponses"})
+            )
+            st.markdown("#### Effectifs par modalité")
+            st.dataframe(effectifs, use_container_width=True)
+
+            donnees_par_modalite = {
+                modalite: groupe[indicateur_colonne]
+                .dropna()
+                .astype(float)
+                .tolist()
+                for modalite, groupe in resumes_reponses.groupby("modalite")
+                if modalite in (modalites_selectionnees or modalites_possibles)
+            }
+
+            tailles = {m: len(vals) for m, vals in donnees_par_modalite.items() if vals}
+            modalites_valides = [m for m, n in tailles.items() if n >= 1]
+
+            if not modalites_valides or len(modalites_valides) < 2:
+                st.info(
+                    "Au moins deux modalités avec des réponses exploitables sont nécessaires pour lancer les tests."
+                )
+            else:
+                modalites_insuffisantes = [m for m, n in tailles.items() if n < 5]
+                if modalites_insuffisantes:
+                    st.warning(
+                        "Certaines modalités ont moins de 5 réponses (" + ", ".join(modalites_insuffisantes) + ") : test non lancé."
+                    )
+                else:
+                    if len(modalites_valides) == 2:
+                        mod_a, mod_b = modalites_valides[:2]
+                        resultat_mw: ResultatMannWhitney | None = effectuer_test_mann_whitney(
+                            donnees_par_modalite.get(mod_a, []),
+                            donnees_par_modalite.get(mod_b, []),
+                        )
+                        if resultat_mw is None:
+                            st.info("Test de Mann–Whitney impossible : données insuffisantes ou vides.")
+                        else:
+                            st.markdown("#### Test de Mann–Whitney (2 modalités)")
+                            st.markdown(
+                                f"Statistique U = {resultat_mw.statistique:.4f}, p-value = {resultat_mw.p_value:.4g}, nA = {resultat_mw.n_a}, nB = {resultat_mw.n_b}"
+                            )
+                    else:
+                        resultat_kruskal: ResultatKruskal | None = effectuer_test_kruskal(
+                            donnees_par_modalite
+                        )
+                        if resultat_kruskal is None:
+                            st.info("Test de Kruskal–Wallis impossible : données insuffisantes.")
+                        else:
+                            st.markdown("#### Test de Kruskal–Wallis (plus de deux modalités)")
+                            st.markdown(
+                                f"H = {resultat_kruskal.statistique:.4f}, p-value = {resultat_kruskal.p_value:.4g}, N = {resultat_kruskal.effectif_total}"
+                            )
+
+                            if st.checkbox(
+                                "Afficher les comparaisons post-hoc (Mann–Whitney par paires)",
+                                help="Active des comparaisons deux à deux avec option d'ajustement des p-values.",
+                            ):
+                                corrections = {
+                                    "Aucune": None,
+                                    "Holm": "holm",
+                                    "Bonferroni": "bonferroni",
+                                    "Benjamini–Hochberg": "fdr_bh",
+                                }
+                                methode_corr = st.selectbox(
+                                    "Méthode d'ajustement des p-values",
+                                    list(corrections.keys()),
+                                    help="Choisissez la méthode d'ajustement des comparaisons multiples.",
+                                )
+
+                                resultats_post_hoc = comparaisons_post_hoc(
+                                    donnees_par_modalite,
+                                    methode_correction=corrections[methode_corr],
+                                )
+
+                                if resultats_post_hoc.empty:
+                                    st.info(
+                                        "Aucune comparaison post-hoc exploitable (données insuffisantes ou paires vides)."
+                                    )
+                                else:
+                                    st.dataframe(
+                                        resultats_post_hoc.rename(
+                                            columns={
+                                                "modalite_a": "Modalité A",
+                                                "modalite_b": "Modalité B",
+                                                "statistique": "U (Mann–Whitney)",
+                                                "p_brute": "p-value brute",
+                                                "p_ajustee": "p-value ajustée",
+                                                "n_a": "nA",
+                                                "n_b": "nB",
+                                                "rejette": "Rejet H0",
+                                            }
+                                        ),
+                                        use_container_width=True,
+                                    )
+
+            st.markdown("#### Distribution de l'indicateur par modalité")
+            box_chart = (
+                alt.Chart(resumes_reponses)
+                .mark_boxplot()
+                .encode(
+                    x=alt.X("modalite:N", title="Modalité"),
+                    y=alt.Y(f"{indicateur_colonne}:Q", title=choix_indicateur),
+                    color=alt.Color("modalite:N", title="Modalité"),
+                    tooltip=[
+                        alt.Tooltip("modalite:N", title="Modalité"),
+                        alt.Tooltip(f"{indicateur_colonne}:Q", title="Valeur", format=".3f"),
+                    ],
+                )
+            )
+
+            st.altair_chart(box_chart, use_container_width=True)
 
     st.markdown("---")
     st.subheader("Comparaison de distributions (KS)")
