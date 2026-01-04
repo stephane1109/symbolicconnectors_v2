@@ -48,7 +48,6 @@ from KolmogorovSmirnov import (
     extraire_longueurs_par_modalite,
     p_value_par_permutation,
 )
-from kruskal import ResultatKruskal, effectuer_test_kruskal
 from simicosinus import concatenate_texts_with_headers
 
 
@@ -482,31 +481,6 @@ ponctuation forte (. / ? / ! / ; /:) ferme aussi le segment.
                 for modalite, groupe in resumes_reponses.groupby("modalite")
                 if modalite in (modalites_selectionnees or modalites_possibles)
             }
-
-            tailles = {m: len(vals) for m, vals in donnees_par_modalite.items() if vals}
-            modalites_valides = [m for m, n in tailles.items() if n >= 1]
-
-            if not modalites_valides or len(modalites_valides) < 2:
-                st.info(
-                    "Au moins deux modalités avec des réponses exploitables sont nécessaires pour lancer les tests."
-                )
-            else:
-                modalites_insuffisantes = [m for m, n in tailles.items() if n < 5]
-                if modalites_insuffisantes:
-                    st.warning(
-                        "Certaines modalités ont moins de 5 réponses (" + ", ".join(modalites_insuffisantes) + ") : test non lancé."
-                    )
-                else:
-                    resultat_kruskal: ResultatKruskal | None = effectuer_test_kruskal(
-                        donnees_par_modalite
-                    )
-                    if resultat_kruskal is None:
-                        st.info("Test de Kruskal–Wallis impossible : données insuffisantes.")
-                    else:
-                        st.markdown("#### Test de Kruskal–Wallis (au moins deux modalités)")
-                        st.markdown(
-                            f"H = {resultat_kruskal.statistique:.4f}, p-value = {resultat_kruskal.p_value:.4g}, N = {resultat_kruskal.effectif_total}"
-                        )
 
             st.markdown("#### Distribution de l'indicateur par modalité")
             box_chart = (
