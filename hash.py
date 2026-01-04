@@ -454,7 +454,7 @@ def resumer_reponses_par_modalite(
 
     for _, row in filtered_df.iterrows():
         modalite = row.get(variable)
-        texte = str(row.get("texte", "") or "").strip()
+        texte = build_text_from_dataframe(pd.DataFrame([row]))
 
         if pd.isna(modalite) or not texte:
             reponses_ignorees += 1
