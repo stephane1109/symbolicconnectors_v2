@@ -72,6 +72,11 @@ def _afficher_resultats(affichage: ResultatChiDeux) -> None:
     st.dataframe(affichage.tableau_attendu, use_container_width=True)
 
     st.subheader("Résidus standardisés")
+    st.caption(
+        "Interprétation : signe positif si la cellule est plus fréquente qu'attendu, signe négatif si elle est moins fréquente. "
+        "Plus la valeur absolue est grande, plus la contribution à la dépendance globale est forte (des valeurs |résidu| ≳ 2 sont souvent considérées comme remarquables). "
+        "Le tableau permet d'identifier quelles associations modalité × colonne expliquent le chi² global."
+    )
     st.dataframe(affichage.residus_standardises, use_container_width=True)
     _afficher_residus_heatmap(affichage.residus_standardises)
 
