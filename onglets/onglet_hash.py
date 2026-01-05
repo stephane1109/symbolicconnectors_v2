@@ -495,6 +495,14 @@ Réponses utilisées : nombre de réponses exploitables (après segmentation) ra
             }
 
             st.markdown("#### Distribution de l'indicateur par modalité")
+            st.caption(
+                "Le graphique ci-dessous affiche l'indicateur choisi dans la liste"
+                " déroulante (LMS, écart-type, coefficient de variation, médiane ou"
+                " proportion de segments courts) pour chaque réponse, regroupée par"
+                " modalité. Les valeurs sont calculées avec les réglages de"
+                " segmentation et de tokenisation sélectionnés en haut de l'onglet"
+                " ainsi que le seuil de segment court saisi ci-dessus."
+            )
             box_chart = (
                 alt.Chart(resumes_reponses)
                 .mark_boxplot()
