@@ -485,15 +485,6 @@ Réponses utilisées : nombre de réponses exploitables (après segmentation) ra
                     use_container_width=True,
                 )
 
-            effectifs = (
-                resumes_reponses.groupby("modalite")[indicateur_colonne]
-                .size()
-                .reset_index(name="n")
-                .rename(columns={"modalite": "Modalité", "n": "Réponses"})
-            )
-            st.markdown("#### Effectifs par modalité")
-            st.dataframe(effectifs, use_container_width=True)
-
             donnees_par_modalite = {
                 modalite: groupe[indicateur_colonne]
                 .dropna()
