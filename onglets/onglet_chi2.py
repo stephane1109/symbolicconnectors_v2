@@ -34,6 +34,10 @@ def _afficher_residus_heatmap(residus: pd.DataFrame) -> None:
     data = residus.reset_index().rename(columns={residus.index.name or "index": "Modalité"})
     data_long = data.melt(id_vars=["Modalité"], var_name="Colonne", value_name="Résidu")
 
+    taille_cellule = 40
+    largeur = max(len(residus.columns), 1) * taille_cellule
+    hauteur = max(len(residus.index), 1) * taille_cellule
+
     chart = (
         alt.Chart(data_long)
         .mark_rect()
@@ -47,6 +51,7 @@ def _afficher_residus_heatmap(residus: pd.DataFrame) -> None:
             ),
             tooltip=["Modalité", "Colonne", alt.Tooltip("Résidu:Q", format=".2f")],
         )
+        .properties(width=largeur, height=hauteur)
     )
 
     st.altair_chart(chart, use_container_width=True)
