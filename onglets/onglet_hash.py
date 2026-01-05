@@ -450,9 +450,7 @@ ponctuation forte (. / ? / ! / ; /:) ferme aussi le segment.
             stats_modalites = statistiques_par_modalite(resumes_reponses)
 
             if not stats_modalites.empty:
-                st.markdown(
-                    "#### Tableau récapitulatif par modalité (agrégations pondérées par segment)"
-                )
+                st.markdown("#### Tableau récapitulatif par modalité")
                 st.caption(
                     """
 Modalité : valeur de la variable catégorielle sélectionnée (par ex. un modèle ou un prompt) à laquelle les indicateurs sont rattachés.
@@ -461,9 +459,9 @@ LMS moyenne : moyenne pondérée par segment des longueurs de segments (en mots)
 
 Médiane (réponses) : médiane des médianes de longueur calculées pour chaque réponse de la modalité (robuste aux valeurs extrêmes).
 
-Écart-type moyen : moyenne, sur les réponses de la modalité, des écarts types des longueurs de segments (dispersion absolue autour de la moyenne dans chaque réponse).
+Écart-type : dispersion absolue des longueurs de segments, calculée pour chaque réponse puis agrégée sur la modalité.
 
-Coefficient de variation moyen : moyenne, sur les réponses de la modalité, du ratio « écart-type / moyenne » des longueurs de segments (dispersion relative). Si une réponse a une moyenne nulle, son coefficient est fixé à 0 avant l’agrégation.
+Coefficient de variation : dispersion relative (« écart-type / moyenne ») des longueurs de segments, calculée pour chaque réponse ; si une réponse a une moyenne nulle, son coefficient est fixé à 0 avant l’agrégation.
 
 Proportion segments courts : moyenne, sur les réponses de la modalité, de la proportion de segments dont la longueur est inférieure ou égale au seuil de segment court (par défaut 10 mots).
 
@@ -476,8 +474,8 @@ Réponses utilisées : nombre de réponses exploitables (après segmentation) ra
                             "modalite": "Modalité",
                             "lms_moyenne": "LMS moyenne",
                             "mediane_reponses": "Médiane (réponses)",
-                            "ecart_type_moyen": "Écart-type moyen",
-                            "cv_moyen": "Coefficient de variation moyen",
+                            "ecart_type_moyen": "Écart-type",
+                            "cv_moyen": "Coefficient de variation",
                             "proportion_courts_moyenne": "Proportion segments courts",
                             "n_reponses": "Réponses utilisées",
                         }
