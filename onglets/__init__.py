@@ -15,6 +15,7 @@ from .onglet_densite import rendu_densite
 from .onglet_donnees_brutes import rendu_donnees_brutes
 from .onglet_hash import rendu_hash
 from .onglet_import import parse_upload, rendu_donnees_importees
+from .onglet_chi2 import rendu_chi2
 from .onglet_lisibilite import rendu_lisibilite
 from .onglet_ngram import rendu_ngram
 from .onglet_openlexicon import rendu_openlexicon
@@ -31,6 +32,7 @@ __all__ = [
     "rendu_donnees_brutes",
     "rendu_donnees_importees",
     "rendu_hash",
+    "rendu_chi2",
     "rendu_lisibilite",
     "rendu_ngram",
     "rendu_openlexicon",

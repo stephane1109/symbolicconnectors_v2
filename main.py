@@ -18,6 +18,7 @@ from connecteurs import get_selected_connectors  # noqa: E402
 from onglets import (  # noqa: E402
     parse_upload,
     rendu_connecteurs,
+    rendu_chi2,
     rendu_densite,
     rendu_donnees_brutes,
     rendu_donnees_importees,
@@ -142,6 +143,7 @@ def main() -> None:
             "N-gram",
             "TF-IDF",
             "Simi cosinus",
+            "Test du chi2",
         ]
     )
 
@@ -211,6 +213,9 @@ def main() -> None:
 
     with tabs[12]:
         rendu_simi_cosinus(tabs[12], df)
+
+    with tabs[13]:
+        rendu_chi2(tabs[13], filtered_df, filtered_connectors)
 
 
 if __name__ == "__main__":
