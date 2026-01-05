@@ -53,6 +53,7 @@
   "au cas où": "CONDITION",
   "au cas ou": "CONDITION",
   "sous certaines conditions": "CONDITION",
+  "en cas de": "CONDITION",
   
   "tant que": "WHILE",
 
@@ -84,7 +85,6 @@
   "de facon que": "ALORS",
   "c'est pourquoi": "ALORS",
   "ceci explique pourquoi": "ALORS",
-  "en cas de": "ALORS",
 
   "\n": "RETOUR À LA LIGNE"
 }
