@@ -75,6 +75,35 @@ def _afficher_resultats(affichage: ResultatChiDeux) -> None:
     st.dataframe(affichage.residus_standardises, use_container_width=True)
     _afficher_residus_heatmap(affichage.residus_standardises)
 
+    st.subheader("Contributions au chi2")
+    st.caption(
+        "Chaque cellule contribue à la statistique via (observé - attendu)^2 / attendu. Les lignes suivantes synthétisent ces apports."
+    )
+    st.dataframe(affichage.contributions, use_container_width=True)
+
+    st.subheader("Contribution par modalité")
+    st.caption(
+        "Somme des contributions de chaque modalité (ligne) et part relative dans la statistique totale du chi2."
+    )
+    st.dataframe(affichage.contributions_modalites, use_container_width=True)
+
+
+def _afficher_conclusion(resultats: ResultatChiDeux) -> None:
+    """Proposer une phrase de conclusion en fonction de la p-value."""
+
+    if resultats.p_value < 0.001:
+        interpretation = "Association très significative entre lignes et colonnes."
+    elif resultats.p_value < 0.01:
+        interpretation = "Association significative entre lignes et colonnes."
+    elif resultats.p_value < 0.05:
+        interpretation = "Association modérément significative entre lignes et colonnes."
+    else:
+        interpretation = "Aucune association statistiquement significative détectée."
+
+    st.info(
+        f"Statistique chi2 = {resultats.chi2:.3f} avec {resultats.ddl} ddl, p-value = {resultats.p_value:.4f}. {interpretation}"
+    )
+
 
 def _proposer_simulation(attendus: pd.DataFrame) -> bool:
     """Indiquer la présence d'attendus faibles et proposer la simulation."""
@@ -200,6 +229,7 @@ def rendu_chi2(tab, dataframe: pd.DataFrame, filtered_connectors: Dict[str, str]
         return
 
     _afficher_resultats(resultats)
+    _afficher_conclusion(resultats)
 
     simulation_possible = _proposer_simulation(resultats.tableau_attendu)
 
@@ -232,6 +262,8 @@ def rendu_chi2(tab, dataframe: pd.DataFrame, filtered_connectors: Dict[str, str]
         table_observee,
         resultats.tableau_attendu,
         resultats.residus_standardises,
+        resultats.contributions,
+        resultats.contributions_modalites,
         (resultats.chi2, resultats.ddl, resultats.p_value, resultats.cramers_v),
     )
 
