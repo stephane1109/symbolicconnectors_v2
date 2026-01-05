@@ -86,7 +86,9 @@ def _afficher_resultats(affichage: ResultatChiDeux) -> None:
 
     st.subheader("Contribution par modalité")
     st.caption(
-        "Somme des contributions de chaque modalité (ligne) et part relative dans la statistique totale du chi2."
+        "Ce que contient le tableau :\n"
+        "La colonne Contribution est la somme, pour chaque modalité (ligne du tableau de contingence), des contributions individuelles des cellules (observé − attendu)^2 / attendu.\n"
+        "La colonne Part (%) exprime la part de cette contribution dans la statistique de chi² totale : Contribution de la modalité / χ² × 100"
     )
     st.dataframe(affichage.contributions_modalites, use_container_width=True)
 
