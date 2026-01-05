@@ -151,7 +151,7 @@ def rendu_chi2(tab, dataframe: pd.DataFrame, filtered_connectors: Dict[str, str]
         connecteurs_selectionnes_affiche = st.multiselect(
             "Connecteurs inclus",
             connecteurs_options,
-            default=connecteurs_options,
+            default=[],
             help="Sélectionnez les connecteurs comptabilisés dans la colonne « Connecteurs ».",
         )
         connecteurs_selectionnes = [option_map[label] for label in connecteurs_selectionnes_affiche]
@@ -172,6 +172,9 @@ def rendu_chi2(tab, dataframe: pd.DataFrame, filtered_connectors: Dict[str, str]
                 categories_selectionnees,
             )
         else:
+            if not connecteurs_selectionnes:
+                st.error("Sélectionnez au moins un connecteur à inclure.")
+                return
             table_observee = construire_table_contingence_connecteurs(
                 dataframe,
                 variable,
