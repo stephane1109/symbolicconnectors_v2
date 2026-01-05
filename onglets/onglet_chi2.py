@@ -43,7 +43,7 @@ def _afficher_residus_heatmap(residus: pd.DataFrame) -> None:
             color=alt.Color(
                 "Résidu:Q",
                 scale=alt.Scale(scheme="redblue", domainMid=0),
-                title="Résidus standardisés",
+                title="Sur et sous-représentations (écarts à l’attendu)",
             ),
             tooltip=["Modalité", "Colonne", alt.Tooltip("Résidu:Q", format=".2f")],
         )
@@ -69,7 +69,7 @@ def _afficher_resultats(affichage: ResultatChiDeux) -> None:
     st.subheader("Tableau attendu")
     st.dataframe(affichage.tableau_attendu, use_container_width=True)
 
-    st.subheader("Résidus standardisés")
+    st.subheader("Sur et sous-représentations (écarts à l’attendu)")
     st.caption(
         "Interprétation : signe positif si la cellule est plus fréquente qu'attendu, signe négatif si elle est moins fréquente. "
         "Plus la valeur absolue est grande, plus la contribution à la dépendance globale est forte (des valeurs |résidu| ≳ 2 sont souvent considérées comme remarquables). "
