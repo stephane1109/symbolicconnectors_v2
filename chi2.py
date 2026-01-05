@@ -30,6 +30,8 @@ class ResultatChiDeux:
     tableau_attendu: pd.DataFrame
     residus_standardises: pd.DataFrame
     cramers_v: float
+    contributions: pd.DataFrame
+    contributions_modalites: pd.DataFrame
 
 
 def _filtrer_connecteurs_par_categories(
@@ -172,6 +174,21 @@ def calculer_statistiques_chi2(tableau: pd.DataFrame) -> ResultatChiDeux:
     residus = (tableau_numpy - attendus) / np.sqrt(attendus)
     residus_df = pd.DataFrame(residus, index=tableau.index, columns=tableau.columns)
 
+    contributions_numpy = ((tableau_numpy - attendus) ** 2) / attendus
+    contributions_df = pd.DataFrame(
+        contributions_numpy, index=tableau.index, columns=tableau.columns
+    )
+    contributions_modalites_df = pd.DataFrame(
+        {
+            "Contribution": contributions_df.sum(axis=1),
+        }
+    )
+    contributions_modalites_df["Part (%)"] = (
+        contributions_modalites_df["Contribution"] / chi2 * 100
+        if chi2 > 0
+        else 0
+    )
+
     min_dim = min(tableau_numpy.shape[0] - 1, tableau_numpy.shape[1] - 1)
     cramers_v = float(np.sqrt(chi2 / (total * min_dim))) if min_dim > 0 else 0.0
 
@@ -182,6 +199,8 @@ def calculer_statistiques_chi2(tableau: pd.DataFrame) -> ResultatChiDeux:
         tableau_attendu=tableau_attendu,
         residus_standardises=residus_df,
         cramers_v=cramers_v,
+        contributions=contributions_df,
+        contributions_modalites=contributions_modalites_df,
     )
 
 
@@ -224,6 +243,8 @@ def fusionner_tables_export(
     tableau_observe: pd.DataFrame,
     tableau_attendu: pd.DataFrame,
     residus: pd.DataFrame,
+    contributions: pd.DataFrame,
+    contributions_modalites: pd.DataFrame,
     resume: Tuple[float, int, float, float],
 ) -> pd.DataFrame:
     """Assembler les données à exporter dans un seul DataFrame long."""
@@ -235,6 +256,8 @@ def fusionner_tables_export(
         ("Observé", tableau_observe),
         ("Attendu", tableau_attendu),
         ("Résidus standardisés", residus),
+        ("Contributions (cellules)", contributions),
+        ("Contributions par modalité", contributions_modalites),
     ]:
         table_reset = table.reset_index().rename(columns={table.index.name or "index": "Modalité"})
         table_long = table_reset.melt(id_vars=["Modalité"], var_name="Colonne", value_name="Valeur")
