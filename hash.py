@@ -422,6 +422,8 @@ def resumer_longueurs_segments(
         proportion_courts = float(np.mean(valeurs <= seuil_segment_court))
 
     return {
+        "n_segments": int(valeurs.size),
+        "somme_longueurs": float(valeurs.sum()),
         "lms": lms,
         "ecart_type": ecart_type,
         "coefficient_variation": coefficient_variation,
@@ -481,43 +483,39 @@ def statistiques_par_modalite(resumes: pd.DataFrame) -> pd.DataFrame:
     if resumes.empty or "modalite" not in resumes.columns:
         return pd.DataFrame()
 
-    colonnes_mesures = [
+    colonnes_mesures = {
         "lms",
         "mediane",
         "ecart_type",
         "coefficient_variation",
         "proportion_courts",
-    ]
+        "n_segments",
+        "somme_longueurs",
+    }
 
-    for colonne in colonnes_mesures:
-        if colonne not in resumes.columns:
-            return pd.DataFrame()
+    if not colonnes_mesures.issubset(resumes.columns):
+        return pd.DataFrame()
 
     regroupement = resumes.groupby("modalite")
 
-    stats_df = regroupement[colonnes_mesures].agg(
-        {
-            "lms": "mean",
-            "mediane": "median",
-            "ecart_type": "mean",
-            "coefficient_variation": "mean",
-            "proportion_courts": "mean",
-        }
+    stats_df = regroupement.agg(
+        somme_longueurs=("somme_longueurs", "sum"),
+        n_segments=("n_segments", "sum"),
+        mediane_reponses=("mediane", "median"),
+        ecart_type_moyen=("ecart_type", "mean"),
+        cv_moyen=("coefficient_variation", "mean"),
+        proportion_courts_moyenne=("proportion_courts", "mean"),
+        n_reponses=("modalite", "size"),
     )
 
-    stats_df["n_reponses"] = regroupement.size()
+    stats_df["lms_moyenne"] = stats_df.apply(
+        lambda row: (row["somme_longueurs"] / row["n_segments"]) if row["n_segments"] else 0.0,
+        axis=1,
+    )
 
     return (
         stats_df.reset_index()
-        .rename(
-            columns={
-                "modalite": "modalite",
-                "lms": "lms_moyenne",
-                "mediane": "mediane_reponses",
-                "ecart_type": "ecart_type_moyen",
-                "coefficient_variation": "cv_moyen",
-                "proportion_courts": "proportion_courts_moyenne",
-            }
-        )
+        .drop(columns=["somme_longueurs", "n_segments"])
+        .rename(columns={"modalite": "modalite"})
         .sort_values("modalite")
     )

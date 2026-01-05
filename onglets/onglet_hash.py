@@ -450,7 +450,9 @@ ponctuation forte (. / ? / ! / ; /:) ferme aussi le segment.
             stats_modalites = statistiques_par_modalite(resumes_reponses)
 
             if not stats_modalites.empty:
-                st.markdown("#### Tableau récapitulatif par modalité (valeurs moyennes par réponse)")
+                st.markdown(
+                    "#### Tableau récapitulatif par modalité (agrégations pondérées par segment)"
+                )
                 st.dataframe(
                     stats_modalites.rename(
                         columns={
