@@ -220,7 +220,7 @@ def fusionner_tables_export(
     for nom, table in [
         ("Observé", tableau_observe),
         ("Attendu", tableau_attendu),
-        ("Résidus standardisés", residus),
+        ("Sur et sous-représentations (écarts à l’attendu)", residus),
         ("Contributions (cellules)", contributions),
         ("Contributions par modalité", contributions_modalites),
     ]:
