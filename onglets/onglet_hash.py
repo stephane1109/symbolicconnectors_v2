@@ -523,6 +523,9 @@ Réponses utilisées : nombre de réponses exploitables (après segmentation) ra
     st.markdown("---")
     st.subheader("Test de Friedman (modèles appariés par prompt)")
     st.caption(
+        "Le test de Friedman est un test non paramétrique pour comparer plusieurs conditions lorsque les mesures sont répétées sur les mêmes cas (données appariées). Il évalue si les distributions des rangs diffèrent entre conditions, en tenant compte de l’appariement. Il teste l’effet d’un seul facteur à la fois (par exemple le modèle), avec un identifiant de cas servant d’appariement (par exemple la question)."
+    )
+    st.caption(
         "Le test de Friedman compare plusieurs conditions appariées : ici, chaque prompt est un bloc et chaque modèle est une condition. Il teste si au moins un modèle diffère des autres."
     )
 
