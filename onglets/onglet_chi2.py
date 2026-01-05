@@ -2,8 +2,7 @@
 
 Interface Streamlit pour construire un tableau de contingence à partir des
 variables/modalités du corpus et des connecteurs sélectionnés, puis exécuter un
-test du chi2 avec options complémentaires (simulation Monte Carlo, résidus,
-export CSV)."""
+test du chi2 avec options complémentaires (résidus, export CSV)."""
 
 from __future__ import annotations
 
@@ -20,7 +19,6 @@ from chi2 import (
     construire_table_contingence_categories,
     construire_table_contingence_connecteurs,
     fusionner_tables_export,
-    p_value_monte_carlo,
 )
 from connecteurs import get_selected_labels
 from fcts_utils import render_connectors_reminder
@@ -72,6 +70,11 @@ def _afficher_resultats(affichage: ResultatChiDeux) -> None:
     st.dataframe(affichage.tableau_attendu, use_container_width=True)
 
     st.subheader("Résidus standardisés")
+    st.caption(
+        "Interprétation : signe positif si la cellule est plus fréquente qu'attendu, signe négatif si elle est moins fréquente. "
+        "Plus la valeur absolue est grande, plus la contribution à la dépendance globale est forte (des valeurs |résidu| ≳ 2 sont souvent considérées comme remarquables). "
+        "Le tableau permet d'identifier quelles associations modalité × colonne expliquent le chi² global."
+    )
     st.dataframe(affichage.residus_standardises, use_container_width=True)
     _afficher_residus_heatmap(affichage.residus_standardises)
 
@@ -105,19 +108,16 @@ def _afficher_conclusion(resultats: ResultatChiDeux) -> None:
     )
 
 
-def _proposer_simulation(attendus: pd.DataFrame) -> bool:
-    """Indiquer la présence d'attendus faibles et proposer la simulation."""
+def _signaler_attendus_faibles(attendus: pd.DataFrame) -> None:
+    """Afficher un avertissement en cas d'attendus faibles."""
 
     if attendus.empty:
-        return False
+        return
 
     if (attendus < 5).any().any():
         st.warning(
             "Certaines cases du tableau attendu sont inférieures à 5. Les résultats du chi2 peuvent être fragiles."
         )
-        return True
-
-    return False
 
 
 def rendu_chi2(tab, dataframe: pd.DataFrame, filtered_connectors: Dict[str, str]) -> None:
@@ -230,26 +230,7 @@ def rendu_chi2(tab, dataframe: pd.DataFrame, filtered_connectors: Dict[str, str]
 
     _afficher_resultats(resultats)
     _afficher_conclusion(resultats)
-
-    simulation_possible = _proposer_simulation(resultats.tableau_attendu)
-
-    if simulation_possible:
-        with st.expander("P-value par simulation Monte Carlo"):
-            nb_simulations = st.slider(
-                "Nombre de simulations", min_value=500, max_value=20000, step=500, value=5000
-            )
-            utiliser_simulation = st.checkbox(
-                "Activer la simulation (permutation sous H0)",
-                value=True,
-                help="La p-value simulée complète la p-value classique du chi2.",
-            )
-            if utiliser_simulation:
-                try:
-                    p_value_simulee = p_value_monte_carlo(table_observee, simulations=nb_simulations)
-                except ValueError as err:
-                    st.error(str(err))
-                else:
-                    st.info(f"p-value simulée : {p_value_simulee:.4f}")
+    _signaler_attendus_faibles(resultats.tableau_attendu)
 
     st.markdown("---")
     st.caption(

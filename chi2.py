@@ -10,7 +10,7 @@ conviviales pour l'onglet Streamlit dédié."""
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Dict, Iterable, List, Sequence, Tuple
 
 import numpy as np
 import pandas as pd
@@ -202,41 +202,6 @@ def calculer_statistiques_chi2(tableau: pd.DataFrame) -> ResultatChiDeux:
         contributions=contributions_df,
         contributions_modalites=contributions_modalites_df,
     )
-
-
-def p_value_monte_carlo(
-    tableau: pd.DataFrame,
-    simulations: int = 5000,
-    graine: Optional[int] = None,
-) -> float:
-    """Estimer une p-value par simulation Monte Carlo sous l'hypothèse d'indépendance."""
-
-    tableau_numpy = tableau.to_numpy(dtype=float)
-    total = tableau_numpy.sum()
-
-    if total == 0:
-        raise ValueError("Impossible de simuler une p-value avec un total nul.")
-
-    lignes = tableau_numpy.sum(axis=1)
-    colonnes = tableau_numpy.sum(axis=0)
-    attendus = np.outer(lignes, colonnes) / total
-
-    if np.any(attendus == 0):
-        raise ValueError("Les attentes comportent des zéros, la simulation n'est pas fiable.")
-
-    probabilites = attendus.ravel() / total
-    rng = np.random.default_rng(graine)
-
-    valeur_observee = (((tableau_numpy - attendus) ** 2) / attendus).sum()
-    compte_extremes = 0
-
-    for _ in range(int(simulations)):
-        echantillon = rng.multinomial(int(total), probabilites).reshape(attendus.shape)
-        valeur_simulee = (((echantillon - attendus) ** 2) / attendus).sum()
-        if valeur_simulee >= valeur_observee:
-            compte_extremes += 1
-
-    return (compte_extremes + 1) / (simulations + 1)
 
 
 def fusionner_tables_export(
