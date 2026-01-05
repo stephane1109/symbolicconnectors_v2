@@ -453,6 +453,23 @@ ponctuation forte (. / ? / ! / ; /:) ferme aussi le segment.
                 st.markdown(
                     "#### Tableau récapitulatif par modalité (agrégations pondérées par segment)"
                 )
+                st.caption(
+                    """
+Modalité : valeur de la variable catégorielle sélectionnée (par ex. un modèle ou un prompt) à laquelle les indicateurs sont rattachés.
+
+LMS moyenne : moyenne pondérée par segment des longueurs de segments (en mots) pour la modalité ; elle est calculée en divisant la somme des longueurs de segments par le nombre total de segments de toutes les réponses de cette modalité.
+
+Médiane (réponses) : médiane des médianes de longueur calculées pour chaque réponse de la modalité (robuste aux valeurs extrêmes).
+
+Écart-type moyen : moyenne, sur les réponses de la modalité, des écarts types des longueurs de segments (dispersion absolue autour de la moyenne dans chaque réponse).
+
+Coefficient de variation moyen : moyenne, sur les réponses de la modalité, du ratio « écart-type / moyenne » des longueurs de segments (dispersion relative). Si une réponse a une moyenne nulle, son coefficient est fixé à 0 avant l’agrégation.
+
+Proportion segments courts : moyenne, sur les réponses de la modalité, de la proportion de segments dont la longueur est inférieure ou égale au seuil de segment court (par défaut 10 mots).
+
+Réponses utilisées : nombre de réponses exploitables (après segmentation) rattachées à la modalité et incluses dans les agrégations.
+"""
+                )
                 st.dataframe(
                     stats_modalites.rename(
                         columns={
