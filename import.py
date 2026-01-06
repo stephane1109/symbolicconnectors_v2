@@ -32,7 +32,10 @@ def _validate_connectors_payload(payload: object) -> Dict[str, str]:
         if not isinstance(raw_key, str) or not isinstance(raw_value, str):
             raise ValueError("Chaque entrée doit utiliser des chaînes pour la clé et la valeur.")
 
-        key = raw_key.strip()
+        # On retire uniquement les espaces et tabulations pour permettre les connecteurs
+        # constitués de retours à la ligne ("\n" ou "\r\n"). Un strip() classique
+        # supprimerait ces clés et empêcherait leur détection.
+        key = raw_key.strip(" \t")
         if not key:
             continue
 
