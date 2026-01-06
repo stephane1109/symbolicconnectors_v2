@@ -7,6 +7,7 @@ l'application."""
 
 from __future__ import annotations
 
+from importlib import import_module
 from pathlib import Path
 from typing import Dict, Iterable, List
 
@@ -14,18 +15,21 @@ import streamlit as st
 
 from analyses import load_connectors
 
-APP_DIR = Path(__file__).parent
 CONNECTORS_STATE_KEY = "connecteurs_selectionnes"
+_dictionary_import = import_module("import")
 
 
 def get_connectors_path() -> Path:
     """Retourner le chemin du dictionnaire de connecteurs."""
 
-    return APP_DIR / "dictionnaires" / "connecteurs.json"
+    return _dictionary_import.get_default_dictionary_path()
 
 
 def load_available_connectors(path: Path | None = None) -> Dict[str, str]:
     """Charger les connecteurs disponibles depuis le fichier de dictionnaire."""
+
+    if _dictionary_import.uses_custom_dictionary():
+        return _dictionary_import.get_custom_connectors()
 
     return load_connectors(path or get_connectors_path())
 

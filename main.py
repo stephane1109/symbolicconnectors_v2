@@ -6,6 +6,7 @@ assemblage des onglets et préparation des données partagées.
 from __future__ import annotations
 
 import sys
+from importlib import import_module
 from pathlib import Path
 
 import streamlit as st
@@ -32,6 +33,8 @@ from onglets import (  # noqa: E402
     rendu_sous_corpus,
     rendu_tfidf,
 )
+
+_dictionary_import = import_module("import")
 
 
 TMP_UPLOAD_PATH = Path("/tmp/iramuteq_last_upload.txt")
@@ -124,6 +127,8 @@ def main() -> None:
         "Téléversez un fichier texte IRaMuTeQ. Chaque article doit démarrer par "
         "une ligne de variables, par exemple `**** *model_gpt *prompt_1`."
     )
+
+    _dictionary_import.render_dictionary_selector()
 
     uploaded_file = st.file_uploader("Fichier IRaMuTeQ", type=["txt"])  # type: ignore[assignment]
     content = _load_uploaded_content(uploaded_file)
