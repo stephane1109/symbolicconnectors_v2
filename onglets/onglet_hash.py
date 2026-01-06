@@ -644,46 +644,49 @@ Réponses utilisées : nombre de réponses exploitables (après segmentation) ra
                     use_container_width=True,
                 )
 
-                if st.checkbox(
-                    "Afficher les comparaisons post-hoc (Wilcoxon signé-rang)",
-                    help="Active des comparaisons deux à deux entre modèles avec ajustement des p-values.",
-                ):
-                    corrections = {
-                        "Aucun": None,
-                        "Holm": "holm",
-                        "Bonferroni": "bonferroni",
-                        "Benjamini–Hochberg": "fdr_bh",
-                    }
-                    methode_corr = st.selectbox(
-                        "Méthode d'ajustement des p-values (post-hoc)",
-                        list(corrections.keys()),
+                st.markdown("#### Comparaisons post-hoc (Wilcoxon signé-rang)")
+                st.caption(
+                    "Après le test global de Friedman, ces comparaisons par paires"
+                    " identifient quelles modalités diffèrent réellement. Les p-values"
+                    " sont ajustées pour contrôler les erreurs liées aux tests multiples."
+                )
+
+                corrections = {
+                    "Aucun": None,
+                    "Holm": "holm",
+                    "Bonferroni": "bonferroni",
+                    "Benjamini–Hochberg": "fdr_bh",
+                }
+                methode_corr = st.selectbox(
+                    "Méthode d'ajustement des p-values (post-hoc)",
+                    list(corrections.keys()),
+                )
+
+                if tableau_apparie.shape[0] < 3:
+                    st.warning(
+                        "Attention : moins de 3 prompts appariés, les tests de Wilcoxon peuvent manquer de puissance."
                     )
 
-                    if tableau_apparie.shape[0] < 3:
-                        st.warning(
-                            "Attention : moins de 3 prompts appariés, les tests de Wilcoxon peuvent manquer de puissance."
-                        )
+                resultats_post_hoc = tests_post_hoc_wilcoxon(
+                    tableau_apparie, methode_correction=corrections[methode_corr]
+                )
 
-                    resultats_post_hoc = tests_post_hoc_wilcoxon(
-                        tableau_apparie, methode_correction=corrections[methode_corr]
+                if resultats_post_hoc.empty:
+                    st.info("Aucune comparaison post-hoc exploitable (prompts complets insuffisants ou paires invalides).")
+                else:
+                    st.dataframe(
+                        resultats_post_hoc.rename(
+                            columns={
+                                "modele_a": "Modèle A",
+                                "modele_b": "Modèle B",
+                                "statistique": "Statistique (Wilcoxon)",
+                                "p_brute": "p-value brute",
+                                "p_ajustee": "p-value ajustée",
+                                "n": "Prompts",
+                            }
+                        ),
+                        use_container_width=True,
                     )
-
-                    if resultats_post_hoc.empty:
-                        st.info("Aucune comparaison post-hoc exploitable (prompts complets insuffisants ou paires invalides).")
-                    else:
-                        st.dataframe(
-                            resultats_post_hoc.rename(
-                                columns={
-                                    "modele_a": "Modèle A",
-                                    "modele_b": "Modèle B",
-                                    "statistique": "Statistique (Wilcoxon)",
-                                    "p_brute": "p-value brute",
-                                    "p_ajustee": "p-value ajustée",
-                                    "n": "Prompts",
-                                }
-                            ),
-                            use_container_width=True,
-                        )
 
                 long_format = tableau_apparie.reset_index().melt(
                     id_vars=variable_bloc, var_name="modele", value_name="valeur"
