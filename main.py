@@ -38,7 +38,7 @@ _dictionary_import = import_module("import")
 
 
 TMP_UPLOAD_PATH = Path("/tmp/iramuteq_last_upload.txt")
-APP_VERSION = "0.1.0-beta"
+APP_VERSION = "0.3.0-beta"
 
 
 def _load_uploaded_content(uploaded_file: st.runtime.uploaded_file_manager.UploadedFile | None) -> str | None:
