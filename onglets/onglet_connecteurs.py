@@ -16,6 +16,7 @@ leurs occurrences dans le corpus.
 from __future__ import annotations
 
 import json
+from importlib import import_module
 from typing import Dict
 from textwrap import dedent
 
@@ -31,16 +32,22 @@ from connecteurs import (
 )
 from fcts_utils import render_connectors_reminder
 
+_dictionary_import = import_module("import")
+
 
 def rendu_connecteurs(tab) -> None:
     render_connectors_reminder(get_selected_connectors())
     connectors_path = get_connectors_path()
 
-    with tab.expander("Afficher le contenu de connecteurs.json"):
-        st.caption(f"Fichier chargé : `{connectors_path}`")
+    with tab.expander("Afficher le dictionnaire actif"):
+        dictionary_label = _dictionary_import.get_dictionary_label()
+        st.caption(f"Source actuelle : `{dictionary_label}`")
         try:
-            with connectors_path.open(encoding="utf-8") as handle:
-                st.json(json.load(handle))
+            if _dictionary_import.uses_custom_dictionary():
+                st.json(_dictionary_import.get_custom_connectors())
+            else:
+                with connectors_path.open(encoding="utf-8") as handle:
+                    st.json(json.load(handle))
         except FileNotFoundError:
             st.error(
                 "Le fichier de connecteurs est introuvable. Vérifiez la présence de "
@@ -48,8 +55,9 @@ def rendu_connecteurs(tab) -> None:
             )
         except json.JSONDecodeError:
             st.error(
-                "Impossible de lire `connecteurs.json` : le fichier ne contient pas un JSON valide."
+                "Impossible de lire le dictionnaire fourni : le fichier ne contient pas un JSON valide."
             )
+
     try:
         available_connectors = load_available_connectors(connectors_path)
     except FileNotFoundError:
@@ -59,12 +67,13 @@ def rendu_connecteurs(tab) -> None:
         )
         available_connectors = {}
 
-    allowed_labels = {"ALTERNATIVE", "CONDITION", "ALORS", "AND", "RETOUR À LA LIGNE"}
-    available_connectors = {
-        connector: label
-        for connector, label in available_connectors.items()
-        if label in allowed_labels
-    }
+    if not _dictionary_import.uses_custom_dictionary():
+        allowed_labels = {"ALTERNATIVE", "CONDITION", "ALORS", "AND", "RETOUR À LA LIGNE"}
+        available_connectors = {
+            connector: label
+            for connector, label in available_connectors.items()
+            if label in allowed_labels
+        }
 
     if not available_connectors:
         st.warning(
