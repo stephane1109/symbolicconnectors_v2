@@ -43,3 +43,26 @@ matcher.add(
 - Vous pouvez enrichir seulement certaines entrées. Les autres peuvent rester au format simple `chaîne → catégorie`.
 - Lors du chargement, si une entrée possède un champ `spaCy_pattern`, utilisez-le pour `Matcher.add`; sinon, générez un pattern minimal basé sur le texte exact (par exemple `{"LOWER": "sinon"}`).
 - Conservez vos clés existantes (par exemple `"sinon": "ALTERNATIVE"`) et n’ajoutez des contraintes que pour les items ambigus.
+
+### Exemple d’écriture pour « ou » dans un JSON
+
+- **Entrée simple (non désambiguïsée)** :
+
+```json
+"ou": "ALTERNATIVE"
+```
+
+- **Entrée enrichie pour guider spaCy** (recommandé si vous souhaitez distinguer « ou »/« où ») :
+
+```json
+"ou": {
+  "category": "ALTERNATIVE",
+  "spaCy_pattern": [
+    [
+      { "LEMMA": "ou", "POS": "CCONJ" }
+    ]
+  ]
+}
+```
+
+Vous pouvez ajouter une entrée séparée pour « où » avec un autre `spaCy_pattern` (par exemple `LEMMA="où"`, `POS` dans `PRON/ADV`, `MORPH="Case=Loc"`) si vous voulez des catégories distinctes.
