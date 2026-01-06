@@ -707,26 +707,30 @@ Réponses utilisées : nombre de réponses exploitables (après segmentation) ra
 
                 st.altair_chart(box_chart_appaire, use_container_width=True)
 
-                if st.checkbox(
-                    "Afficher le graphique en lignes (spaghetti) par prompt",
-                    help="Visualise l'effet prompt en reliant les valeurs des modèles pour chaque bloc.",
-                ):
-                    spaghetti_chart = (
-                        alt.Chart(long_format)
-                        .mark_line(point=True)
-                        .encode(
-                            x=alt.X("modele:N", title="Modèle"),
-                            y=alt.Y("valeur:Q", title=choix_indicateur_friedman),
-                            color=alt.Color(variable_bloc + ":N", title="Bloc/prompt", legend=None),
-                            tooltip=[
-                                alt.Tooltip(variable_bloc + ":N", title="Bloc/prompt"),
-                                alt.Tooltip("modele:N", title="Modèle"),
-                                alt.Tooltip("valeur:Q", title="Valeur", format=".3f"),
-                            ],
-                        )
-                    )
+                st.markdown("#### Comparaison post-hoc par prompt")
+                st.caption(
+                    "Ce graphique relie les valeurs de chaque modèle pour un même prompt. "
+                    "Après le test de Friedman, il met en évidence où se situent les "
+                    "écarts entre modalités et comment chaque prompt contribue aux "
+                    "différences globales."
+                )
 
-                    st.altair_chart(spaghetti_chart, use_container_width=True)
+                spaghetti_chart = (
+                    alt.Chart(long_format)
+                    .mark_line(point=True)
+                    .encode(
+                        x=alt.X("modele:N", title="Modèle"),
+                        y=alt.Y("valeur:Q", title=choix_indicateur_friedman),
+                        color=alt.Color(variable_bloc + ":N", title="Bloc/prompt", legend=None),
+                        tooltip=[
+                            alt.Tooltip(variable_bloc + ":N", title="Bloc/prompt"),
+                            alt.Tooltip("modele:N", title="Modèle"),
+                            alt.Tooltip("valeur:Q", title="Valeur", format=".3f"),
+                        ],
+                    )
+                )
+
+                st.altair_chart(spaghetti_chart, use_container_width=True)
 
     st.markdown("---")
     st.subheader("Comparaison de distributions (KS)")
