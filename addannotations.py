@@ -16,11 +16,13 @@ def render_manual_annotations(flattened_text: str) -> None:
         "Définissez vos labels, puis surlignez le texte à la souris pour créer les annotations."
     )
 
-    raw_text = st.text_area(
-        "Texte à annoter",
+    raw_text = flattened_text
+    st.text_area(
+        "Texte importé",
         flattened_text,
         height=200,
         key="manual_annotation_text",
+        disabled=True,
     )
 
     annotations_state = st.session_state.setdefault("manual_annotations", [])
