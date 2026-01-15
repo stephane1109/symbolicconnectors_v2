@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import json
+import importlib
 import importlib.util
-from pathlib import Path
 from typing import Callable, List, Optional
 
 import pandas as pd
@@ -13,18 +13,26 @@ TextLabeler = Callable[[str, List[str]], List[dict]]
 
 
 def _load_text_labeler() -> Optional[TextLabeler]:
-    spec = importlib.util.find_spec("streamlit_annotation_tools")
-    if spec is None or spec.origin is None:
-        return None
+    module_candidates = (
+        "st_annotator",
+        "streamlit_annotator",
+        "st_annotator_component",
+        "annotator",
+    )
+    callable_candidates = ("st_annotate", "annotate", "annotator")
 
-    package_dir = Path(spec.origin).parent
-    build_dir = package_dir / "frontend" / "build"
-    if not build_dir.exists():
-        return None
+    for module_name in module_candidates:
+        spec = importlib.util.find_spec(module_name)
+        if spec is None:
+            continue
 
-    from streamlit_annotation_tools import text_labeler
+        module = importlib.import_module(module_name)
+        for callable_name in callable_candidates:
+            text_labeler = getattr(module, callable_name, None)
+            if callable(text_labeler):
+                return text_labeler
 
-    return text_labeler
+    return None
 
 
 def render_manual_annotations(flattened_text: str) -> None:
@@ -46,7 +54,7 @@ def render_manual_annotations(flattened_text: str) -> None:
     annotations_state = st.session_state.setdefault("manual_annotations", [])
     labels_state = st.session_state.setdefault("annotation_labels", [])
 
-    st.markdown("#### Text Labeler")
+    st.markdown("#### Annotation")
     label_input = st.text_input("Nouveau label", key="annotation_label_input")
     add_label = st.button("Ajouter le label")
     if add_label:
@@ -77,8 +85,9 @@ def render_manual_annotations(flattened_text: str) -> None:
     text_labeler = _load_text_labeler()
     if text_labeler is None:
         st.error(
-            "Le composant d'annotation n'est pas disponible (frontend manquant). "
-            "Vérifiez l'installation de streamlit-annotation-tools sur Streamlit Cloud."
+            "Le composant d'annotation n'est pas disponible. "
+            "Vérifiez l'installation de st-annotator et que le module expose "
+            "st_annotate/annotate (ex: st_annotator, streamlit_annotator)."
         )
     elif labels_state:
         annotations_state[:] = text_labeler(
