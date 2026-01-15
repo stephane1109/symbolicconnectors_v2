@@ -13,15 +13,24 @@ TextLabeler = Callable[[str, List[str]], List[dict]]
 
 
 def _load_text_labeler() -> Optional[TextLabeler]:
-    for module_name in ("st_annotator", "streamlit_annotator"):
+    module_candidates = (
+        "st_annotator",
+        "streamlit_annotator",
+        "st_annotator_component",
+        "annotator",
+    )
+    callable_candidates = ("st_annotate", "annotate", "annotator")
+
+    for module_name in module_candidates:
         spec = importlib.util.find_spec(module_name)
         if spec is None:
             continue
 
         module = importlib.import_module(module_name)
-        text_labeler = getattr(module, "st_annotate", None)
-        if text_labeler is not None:
-            return text_labeler
+        for callable_name in callable_candidates:
+            text_labeler = getattr(module, callable_name, None)
+            if callable(text_labeler):
+                return text_labeler
 
     return None
 
@@ -77,8 +86,8 @@ def render_manual_annotations(flattened_text: str) -> None:
     if text_labeler is None:
         st.error(
             "Le composant d'annotation n'est pas disponible. "
-            "Vérifiez l'installation de st-annotator (module st_annotator) "
-            "sur Streamlit Cloud."
+            "Vérifiez l'installation de st-annotator et que le module expose "
+            "st_annotate/annotate (ex: st_annotator, streamlit_annotator)."
         )
     elif labels_state:
         annotations_state[:] = text_labeler(
