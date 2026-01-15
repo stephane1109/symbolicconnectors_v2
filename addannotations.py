@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import importlib
 import importlib.util
 from typing import Callable, List, Optional
 
@@ -12,13 +13,17 @@ TextLabeler = Callable[[str, List[str]], List[dict]]
 
 
 def _load_text_labeler() -> Optional[TextLabeler]:
-    spec = importlib.util.find_spec("st_annotator")
-    if spec is None:
-        return None
+    for module_name in ("st_annotator", "streamlit_annotator"):
+        spec = importlib.util.find_spec(module_name)
+        if spec is None:
+            continue
 
-    from st_annotator import st_annotate
+        module = importlib.import_module(module_name)
+        text_labeler = getattr(module, "st_annotate", None)
+        if text_labeler is not None:
+            return text_labeler
 
-    return st_annotate
+    return None
 
 
 def render_manual_annotations(flattened_text: str) -> None:
