@@ -63,13 +63,6 @@ def render_manual_annotations(flattened_text: str) -> None:
     )
 
     raw_text = flattened_text
-    st.text_area(
-        "Texte importé",
-        flattened_text,
-        height=200,
-        key="manual_annotation_text",
-        disabled=True,
-    )
 
     annotations_state = st.session_state.setdefault("manual_annotations", [])
     labels_state = st.session_state.setdefault("annotation_labels", [])
