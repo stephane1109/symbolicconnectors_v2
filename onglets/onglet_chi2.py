@@ -32,18 +32,34 @@ def _afficher_residus_heatmap(residus: pd.DataFrame) -> None:
         return
 
     data = residus.reset_index().rename(columns={residus.index.name or "index": "Modalité"})
+    data["Modalité"] = data["Modalité"].astype(str)
+    data.columns = [str(col) for col in data.columns]
     data_long = data.melt(id_vars=["Modalité"], var_name="Colonne", value_name="Résidu")
 
     taille_cellule = 40
-    largeur = max(len(residus.columns), 1) * taille_cellule
-    hauteur = max(len(residus.index), 1) * taille_cellule
+    colonnes = [str(col) for col in residus.columns]
+    modalites = [str(modalite) for modalite in residus.index]
+    largeur = max(len(colonnes), 1) * taille_cellule
+    hauteur = max(len(modalites), 1) * taille_cellule
 
     chart = (
         alt.Chart(data_long)
         .mark_rect()
         .encode(
-            x=alt.X("Colonne:N", title="Colonnes"),
-            y=alt.Y("Modalité:N", title="Modalités"),
+            x=alt.X(
+                "Colonne:N",
+                title="Colonnes",
+                sort=colonnes,
+                axis=alt.Axis(labelAngle=-45, labelLimit=0, labelOverlap=False),
+                scale=alt.Scale(paddingInner=0, paddingOuter=0),
+            ),
+            y=alt.Y(
+                "Modalité:N",
+                title="Modalités",
+                sort=modalites,
+                axis=alt.Axis(labelLimit=0, labelOverlap=False),
+                scale=alt.Scale(paddingInner=0, paddingOuter=0),
+            ),
             color=alt.Color(
                 "Résidu:Q",
                 scale=alt.Scale(scheme="redblue", domainMid=0),
@@ -54,7 +70,7 @@ def _afficher_residus_heatmap(residus: pd.DataFrame) -> None:
         .properties(width=largeur, height=hauteur)
     )
 
-    st.altair_chart(chart, use_container_width=True)
+    st.altair_chart(chart, use_container_width=False)
 
 
 def _afficher_resultats(affichage: ResultatChiDeux) -> None:
@@ -264,4 +280,3 @@ def rendu_chi2(tab, dataframe: pd.DataFrame, filtered_connectors: Dict[str, str]
         file_name=nom_fichier,
         mime="text/csv",
     )
-
