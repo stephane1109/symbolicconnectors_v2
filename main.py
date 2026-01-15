@@ -26,6 +26,7 @@ from onglets import (  # noqa: E402
     rendu_hash,
     rendu_lisibilite,
     rendu_ngram,
+    rendu_anova,
     rendu_openlexicon,
     rendu_patterns,
     rendu_regex_motifs,
@@ -140,6 +141,7 @@ def main() -> None:
             "Données brutes",
             "Sous corpus",
             "Densité",
+            "ANOVA",
             "OpenLexicon",
             "Hash",
             "Regex motifs",
@@ -196,31 +198,34 @@ def main() -> None:
         rendu_densite(tabs[4], df, filtered_connectors)
 
     with tabs[5]:
-        rendu_openlexicon(tabs[5], df, filtered_connectors)
+        rendu_anova(tabs[5], filtered_df, filtered_connectors)
 
     with tabs[6]:
-        rendu_hash(tabs[6], filtered_df, filtered_connectors, combined_text)
+        rendu_openlexicon(tabs[6], df, filtered_connectors)
 
     with tabs[7]:
-        rendu_regex_motifs(tabs[7], combined_text, filtered_connectors)
+        rendu_hash(tabs[7], filtered_df, filtered_connectors, combined_text)
 
     with tabs[8]:
-        rendu_patterns(tabs[8], filtered_df, combined_text, selected_variables)
+        rendu_regex_motifs(tabs[8], combined_text, filtered_connectors)
 
     with tabs[9]:
-        rendu_lisibilite(tabs[9], df, filtered_connectors)
+        rendu_patterns(tabs[9], filtered_df, combined_text, selected_variables)
 
     with tabs[10]:
-        rendu_ngram(tabs[10], filtered_df, filtered_connectors)
+        rendu_lisibilite(tabs[10], df, filtered_connectors)
 
     with tabs[11]:
-        rendu_tfidf(tabs[11], df, filtered_connectors)
+        rendu_ngram(tabs[11], filtered_df, filtered_connectors)
 
     with tabs[12]:
-        rendu_simi_cosinus(tabs[12], df)
+        rendu_tfidf(tabs[12], df, filtered_connectors)
 
     with tabs[13]:
-        rendu_chi2(tabs[13], filtered_df, filtered_connectors)
+        rendu_simi_cosinus(tabs[13], df)
+
+    with tabs[14]:
+        rendu_chi2(tabs[14], filtered_df, filtered_connectors)
 
 
 if __name__ == "__main__":

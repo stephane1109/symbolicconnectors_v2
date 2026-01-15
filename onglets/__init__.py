@@ -11,6 +11,7 @@ exposition dans l'application principale.
   pour afficher les interfaces utilisateur.
 """
 from .onglet_connecteurs import rendu_connecteurs
+from .onglet_anova import rendu_anova
 from .onglet_densite import rendu_densite
 from .onglet_donnees_brutes import rendu_donnees_brutes
 from .onglet_hash import rendu_hash
@@ -27,6 +28,7 @@ from .onglet_tfidf import rendu_tfidf
 
 __all__ = [
     "parse_upload",
+    "rendu_anova",
     "rendu_connecteurs",
     "rendu_densite",
     "rendu_donnees_brutes",
