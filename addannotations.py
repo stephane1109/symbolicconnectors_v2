@@ -11,11 +11,9 @@ from streamlit_annotation_tools import text_labeler
 
 def render_manual_annotations(flattened_text: str) -> None:
     st.markdown("---")
-    st.subheader("Créer un JSON d'annotations manuelles")
+    st.subheader("Annoter un texte")
     st.caption(
-        "Pour l'instant, Streamlit ne permet pas de surligner directement le texte. "
-        "Copiez/collez un passage ou indiquez des indices de début/fin pour créer "
-        "vos annotations, puis téléchargez le JSON généré."
+        "Définissez vos labels, puis surlignez le texte à la souris pour créer les annotations."
     )
 
     raw_text = st.text_area(
