@@ -141,7 +141,6 @@ def rendu_densite(tab, df: pd.DataFrame, filtered_connectors: Dict[str, str]) ->
         st.info("Aucun connecteur détecté : la densité est nulle pour ce texte.")
 
     st.caption(
-        "La densité correspond au nombre de connecteurs ramené à une base commune. "
         "Un score élevé signale un texte plus riche en connecteurs logiques."
     )
 
