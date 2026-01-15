@@ -9,7 +9,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Dict, List
 
-import altair as alt
+import matplotlib.pyplot as plt
+from matplotlib.colors import TwoSlopeNorm
 import pandas as pd
 import streamlit as st
 
@@ -25,52 +26,34 @@ from fcts_utils import render_connectors_reminder
 
 
 def _afficher_residus_heatmap(residus: pd.DataFrame) -> None:
-    """Afficher une heatmap Altair des résidus standardisés."""
+    """Afficher une heatmap simple des résidus standardisés."""
 
     if residus.empty:
         st.info("Aucun résidu à afficher.")
         return
 
-    data = residus.reset_index().rename(columns={residus.index.name or "index": "Modalité"})
-    data["Modalité"] = data["Modalité"].astype(str)
-    data.columns = [str(col) for col in data.columns]
-    data_long = data.melt(id_vars=["Modalité"], var_name="Colonne", value_name="Résidu")
-
-    taille_cellule = 40
     colonnes = [str(col) for col in residus.columns]
     modalites = [str(modalite) for modalite in residus.index]
-    largeur = max(len(colonnes), 1) * taille_cellule
-    hauteur = max(len(modalites), 1) * taille_cellule
+    valeurs = residus.fillna(0).to_numpy()
 
-    chart = (
-        alt.Chart(data_long)
-        .mark_rect()
-        .encode(
-            x=alt.X(
-                "Colonne:N",
-                title="Colonnes",
-                sort=colonnes,
-                axis=alt.Axis(labelAngle=-45, labelLimit=0, labelOverlap=False),
-                scale=alt.Scale(paddingInner=0, paddingOuter=0),
-            ),
-            y=alt.Y(
-                "Modalité:N",
-                title="Modalités",
-                sort=modalites,
-                axis=alt.Axis(labelLimit=0, labelOverlap=False),
-                scale=alt.Scale(paddingInner=0, paddingOuter=0),
-            ),
-            color=alt.Color(
-                "Résidu:Q",
-                scale=alt.Scale(scheme="redblue", domainMid=0),
-                title="Sur et sous-représentations (écarts à l’attendu)",
-            ),
-            tooltip=["Modalité", "Colonne", alt.Tooltip("Résidu:Q", format=".2f")],
-        )
-        .properties(width=largeur, height=hauteur)
-    )
+    fig_width = max(4, len(colonnes) * 0.6)
+    fig_height = max(4, len(modalites) * 0.45)
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
 
-    st.altair_chart(chart, use_container_width=False)
+    vmax = float(abs(valeurs).max()) if valeurs.size else 1.0
+    norm = TwoSlopeNorm(vmin=-vmax, vcenter=0, vmax=vmax)
+    image = ax.imshow(valeurs, cmap="RdBu_r", norm=norm, aspect="auto")
+
+    ax.set_xticks(range(len(colonnes)), labels=colonnes, rotation=45, ha="right")
+    ax.set_yticks(range(len(modalites)), labels=modalites)
+    ax.set_xlabel("Colonnes")
+    ax.set_ylabel("Modalités")
+    ax.set_title("Sur et sous-représentations (écarts à l’attendu)")
+
+    fig.colorbar(image, ax=ax, shrink=0.8)
+    fig.tight_layout()
+    st.pyplot(fig)
+    plt.close(fig)
 
 
 def _afficher_resultats(affichage: ResultatChiDeux) -> None:
