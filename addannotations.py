@@ -98,9 +98,8 @@ def render_manual_annotations(flattened_text: str) -> None:
     if text_labeler is None:
         st.error(
             "Le composant d'annotation n'est pas disponible. "
-            "Ajoutez streamlit-annotator (module streamlit_annotator, "
-            "par exemple via git+https://github.com/EttoreCaputo/streamlit-annotator.git) "
-            "ou st-annotator (module st_annotator) dans vos dépendances."
+            "Installez un paquet compatible (streamlit_annotator ou st_annotator) "
+            "si vous souhaitez activer cette fonctionnalité."
         )
     elif labels_state:
         annotations_state[:] = text_labeler(
