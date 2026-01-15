@@ -5,12 +5,20 @@ import json
 import importlib
 import importlib.util
 import inspect
+from pathlib import Path
 from typing import Callable, List, Optional
 
 import pandas as pd
 import streamlit as st
+from streamlit.components.v1 import declare_component
 
 TextLabeler = Callable[[str, List[str], str], List[dict]]
+
+_LOCAL_COMPONENT_PATH = Path(__file__).resolve().parent / "components" / "text_annotator"
+_local_text_annotator = declare_component(
+    "local_text_annotator",
+    path=str(_LOCAL_COMPONENT_PATH),
+)
 
 
 def _wrap_text_labeler(text_labeler: Callable[..., List[dict]]) -> TextLabeler:
@@ -96,11 +104,17 @@ def render_manual_annotations(flattened_text: str) -> None:
     st.markdown("#### Annotation par surlignage")
     text_labeler = _load_text_labeler()
     if text_labeler is None:
-        st.error(
-            "Le composant d'annotation n'est pas disponible. "
-            "Installez un paquet compatible (streamlit_annotator ou st_annotator) "
-            "si vous souhaitez activer cette fonctionnalité."
-        )
+        if labels_state:
+            component_value = _local_text_annotator(
+                text=raw_text,
+                labels=labels_state,
+                annotations=annotations_state,
+                key="manual_annotation_component",
+            )
+            if component_value is not None:
+                annotations_state[:] = component_value
+        else:
+            st.info("Ajoutez au moins un label pour activer la sélection par surlignage.")
     elif labels_state:
         annotations_state[:] = text_labeler(
             raw_text,
