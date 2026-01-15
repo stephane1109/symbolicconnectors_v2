@@ -12,11 +12,11 @@ TextLabeler = Callable[[str, List[str]], List[dict]]
 
 
 def _load_text_labeler() -> Optional[TextLabeler]:
-    spec = importlib.util.find_spec("streamlit_annotator")
+    spec = importlib.util.find_spec("st_annotator")
     if spec is None:
         return None
 
-    from streamlit_annotator import st_annotate
+    from st_annotator import st_annotate
 
     return st_annotate
 
@@ -72,7 +72,7 @@ def render_manual_annotations(flattened_text: str) -> None:
     if text_labeler is None:
         st.error(
             "Le composant d'annotation n'est pas disponible. "
-            "Vérifiez l'installation de streamlit-annotator sur Streamlit Cloud."
+            "Vérifiez l'installation de st-annotator sur Streamlit Cloud."
         )
     elif labels_state:
         annotations_state[:] = text_labeler(
