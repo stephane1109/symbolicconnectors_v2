@@ -9,8 +9,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Dict, List
 
-import matplotlib.pyplot as plt
-from matplotlib.colors import TwoSlopeNorm
+import altair as alt
 import pandas as pd
 import streamlit as st
 
@@ -34,26 +33,37 @@ def _afficher_residus_heatmap(residus: pd.DataFrame) -> None:
 
     colonnes = [str(col) for col in residus.columns]
     modalites = [str(modalite) for modalite in residus.index]
-    valeurs = residus.fillna(0).to_numpy()
 
-    fig_width = max(4, len(colonnes) * 0.6)
-    fig_height = max(4, len(modalites) * 0.45)
-    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+    residus_long = (
+        residus.fillna(0)
+        .reset_index()
+        .rename(columns={residus.index.name or "index": "Modalité"})
+        .melt(id_vars="Modalité", var_name="Colonne", value_name="Résidu")
+    )
 
-    vmax = float(abs(valeurs).max()) if valeurs.size else 1.0
-    norm = TwoSlopeNorm(vmin=-vmax, vcenter=0, vmax=vmax)
-    image = ax.imshow(valeurs, cmap="RdBu_r", norm=norm, aspect="auto")
+    vmax = float(residus_long["Résidu"].abs().max()) if not residus_long.empty else 1.0
 
-    ax.set_xticks(range(len(colonnes)), labels=colonnes, rotation=45, ha="right")
-    ax.set_yticks(range(len(modalites)), labels=modalites)
-    ax.set_xlabel("Colonnes")
-    ax.set_ylabel("Modalités")
-    ax.set_title("Sur et sous-représentations (écarts à l’attendu)")
+    heatmap = (
+        alt.Chart(residus_long)
+        .mark_rect()
+        .encode(
+            x=alt.X("Colonne:N", sort=colonnes, title="Colonnes", axis=alt.Axis(labelAngle=-45)),
+            y=alt.Y("Modalité:N", sort=modalites, title="Modalités"),
+            color=alt.Color(
+                "Résidu:Q",
+                scale=alt.Scale(scheme="redblue", domain=[-vmax, vmax], domainMid=0),
+                legend=alt.Legend(title="Résidu"),
+            ),
+            tooltip=[
+                alt.Tooltip("Modalité:N"),
+                alt.Tooltip("Colonne:N"),
+                alt.Tooltip("Résidu:Q", format=".2f"),
+            ],
+        )
+        .properties(title="Sur et sous-représentations (écarts à l’attendu)")
+    )
 
-    fig.colorbar(image, ax=ax, shrink=0.8)
-    fig.tight_layout()
-    st.pyplot(fig)
-    plt.close(fig)
+    st.altair_chart(heatmap, use_container_width=True)
 
 
 def _afficher_resultats(affichage: ResultatChiDeux) -> None:
