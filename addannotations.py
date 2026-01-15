@@ -57,17 +57,11 @@ def _load_text_labeler() -> Optional[TextLabeler]:
 
 def render_manual_annotations(flattened_text: str) -> None:
     st.markdown("---")
-    st.subheader("Annoter un texte")
-    st.caption(
-        "Définissez vos labels, puis surlignez le texte à la souris pour créer les annotations."
-    )
-
     raw_text = flattened_text
 
     annotations_state = st.session_state.setdefault("manual_annotations", [])
     labels_state = st.session_state.setdefault("annotation_labels", [])
 
-    st.markdown("#### Annotation")
     label_input = st.text_input("Nouveau label", key="annotation_label_input")
     add_label = st.button("Ajouter le label")
     if add_label:
