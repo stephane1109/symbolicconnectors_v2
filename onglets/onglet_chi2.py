@@ -25,52 +25,61 @@ from fcts_utils import render_connectors_reminder
 
 
 def _afficher_residus_heatmap(residus: pd.DataFrame) -> None:
-    """Afficher une heatmap Altair des résidus standardisés."""
+    """Afficher une heatmap simple des résidus standardisés."""
 
     if residus.empty:
         st.info("Aucun résidu à afficher.")
         return
 
-    data = residus.reset_index().rename(columns={residus.index.name or "index": "Modalité"})
-    data["Modalité"] = data["Modalité"].astype(str)
-    data.columns = [str(col) for col in data.columns]
-    data_long = data.melt(id_vars=["Modalité"], var_name="Colonne", value_name="Résidu")
-
-    taille_cellule = 40
     colonnes = [str(col) for col in residus.columns]
     modalites = [str(modalite) for modalite in residus.index]
-    largeur = max(len(colonnes), 1) * taille_cellule
-    hauteur = max(len(modalites), 1) * taille_cellule
 
-    chart = (
-        alt.Chart(data_long)
+    residus_long = (
+        residus.fillna(0)
+        .reset_index()
+        .rename(columns={residus.index.name or "index": "Modalité"})
+        .melt(id_vars="Modalité", var_name="Colonne", value_name="Résidu")
+    )
+
+    vmax = float(residus_long["Résidu"].abs().max()) if not residus_long.empty else 1.0
+
+    cell_size = 28
+    heatmap = (
+        alt.Chart(residus_long)
         .mark_rect()
         .encode(
             x=alt.X(
                 "Colonne:N",
-                title="Colonnes",
                 sort=colonnes,
-                axis=alt.Axis(labelAngle=-45, labelLimit=0, labelOverlap=False),
+                title="Colonnes",
+                axis=alt.Axis(labelAngle=-45),
                 scale=alt.Scale(paddingInner=0, paddingOuter=0),
             ),
             y=alt.Y(
                 "Modalité:N",
-                title="Modalités",
                 sort=modalites,
-                axis=alt.Axis(labelLimit=0, labelOverlap=False),
+                title="Modalités",
                 scale=alt.Scale(paddingInner=0, paddingOuter=0),
             ),
             color=alt.Color(
                 "Résidu:Q",
-                scale=alt.Scale(scheme="redblue", domainMid=0),
-                title="Sur et sous-représentations (écarts à l’attendu)",
+                scale=alt.Scale(scheme="redblue", domain=[-vmax, vmax], domainMid=0),
+                legend=alt.Legend(title="Résidu"),
             ),
-            tooltip=["Modalité", "Colonne", alt.Tooltip("Résidu:Q", format=".2f")],
+            tooltip=[
+                alt.Tooltip("Modalité:N"),
+                alt.Tooltip("Colonne:N"),
+                alt.Tooltip("Résidu:Q", format=".2f"),
+            ],
         )
-        .properties(width=largeur, height=hauteur)
+        .properties(
+            title="Sur et sous-représentations (écarts à l’attendu)",
+            width=alt.Step(cell_size),
+            height=alt.Step(cell_size),
+        )
     )
 
-    st.altair_chart(chart, use_container_width=False)
+    st.altair_chart(heatmap, use_container_width=False)
 
 
 def _afficher_resultats(affichage: ResultatChiDeux) -> None:
