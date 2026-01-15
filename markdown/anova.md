@@ -22,6 +22,8 @@ La fonction `compute_density_per_response` construit le texte de chaque ligne (e
 
 Elle renvoie un DataFrame enrichi avec ces indicateurs.
 
+> **Note** : le test ANOVA ne se base pas sur la Longueur Moyenne des Segments (LMS). Il compare uniquement les densités de connecteurs calculées par réponse, puis regroupées par modalité.
+
 ## 3) Constitution des groupes
 
 Une fois les densités calculées, les réponses sont groupées par modalité de la variable choisie (ex. `grok`, `gpt`, etc.).
