@@ -4,24 +4,53 @@ from __future__ import annotations
 import json
 import importlib
 import importlib.util
+import inspect
+from pathlib import Path
 from typing import Callable, List, Optional
 
 import pandas as pd
 import streamlit as st
+from streamlit.components.v1 import declare_component
 
-TextLabeler = Callable[[str, List[str]], List[dict]]
+TextLabeler = Callable[[str, List[str], str], List[dict]]
+
+_LOCAL_COMPONENT_PATH = Path(__file__).resolve().parent / "components" / "text_annotator"
+_local_text_annotator = declare_component(
+    "local_text_annotator",
+    path=str(_LOCAL_COMPONENT_PATH),
+)
+
+
+def _wrap_text_labeler(text_labeler: Callable[..., List[dict]]) -> TextLabeler:
+    signature = inspect.signature(text_labeler)
+    accepts_key = "key" in signature.parameters or any(
+        parameter.kind == inspect.Parameter.VAR_KEYWORD
+        for parameter in signature.parameters.values()
+    )
+
+    def _labeler(text: str, labels: List[str], key: str) -> List[dict]:
+        kwargs = {"key": key} if accepts_key else {}
+        return text_labeler(text, labels, **kwargs)
+
+    return _labeler
 
 
 def _load_text_labeler() -> Optional[TextLabeler]:
-    for module_name in ("st_annotator", "streamlit_annotator"):
+    candidates = (
+        ("st_annotator", ("st_annotate",)),
+        ("streamlit_annotator", ("text_annotator", "st_annotate", "annotate")),
+    )
+
+    for module_name, attributes in candidates:
         spec = importlib.util.find_spec(module_name)
         if spec is None:
             continue
 
         module = importlib.import_module(module_name)
-        text_labeler = getattr(module, "st_annotate", None)
-        if text_labeler is not None:
-            return text_labeler
+        for attribute in attributes:
+            text_labeler = getattr(module, attribute, None)
+            if callable(text_labeler):
+                return _wrap_text_labeler(text_labeler)
 
     return None
 
@@ -75,16 +104,22 @@ def render_manual_annotations(flattened_text: str) -> None:
     st.markdown("#### Annotation par surlignage")
     text_labeler = _load_text_labeler()
     if text_labeler is None:
-        st.error(
-            "Le composant d'annotation n'est pas disponible. "
-            "Vérifiez l'installation de st-annotator (module st_annotator) "
-            "sur Streamlit Cloud."
-        )
+        if labels_state:
+            component_value = _local_text_annotator(
+                text=raw_text,
+                labels=labels_state,
+                annotations=annotations_state,
+                key="manual_annotation_component",
+            )
+            if component_value is not None:
+                annotations_state[:] = component_value
+        else:
+            st.info("Ajoutez au moins un label pour activer la sélection par surlignage.")
     elif labels_state:
         annotations_state[:] = text_labeler(
             raw_text,
             labels_state,
-            key="manual_annotation_labeler",
+            "manual_annotation_labeler",
         )
     else:
         st.info("Ajoutez au moins un label pour activer la sélection par surlignage.")
