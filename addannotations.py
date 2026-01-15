@@ -128,10 +128,10 @@ def render_manual_annotations(flattened_text: str) -> None:
         st.markdown("#### Aperçu des annotations")
         st.dataframe(pd.DataFrame(annotations_state), use_container_width=True)
 
-    labels_payload = {"labels": labels_state}
+    annotations_payload = {item.get("text", ""): item.get("label", "") for item in annotations_state}
     st.download_button(
-        "Télécharger le JSON des labels",
-        data=json.dumps(labels_payload, ensure_ascii=False, indent=2),
-        file_name="labels.json",
+        "Télécharger le JSON des annotations",
+        data=json.dumps(annotations_payload, ensure_ascii=False, indent=2),
+        file_name="annotations.json",
         mime="application/json",
     )

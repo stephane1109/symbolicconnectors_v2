@@ -25,7 +25,8 @@
         background: #fafafa;
         white-space: pre-wrap;
         line-height: 1.5;
-        min-height: 120px;
+        height: 33vh;
+        overflow-y: auto;
       }
       .controls {
         display: flex;
@@ -63,6 +64,11 @@
       .empty {
         color: #777;
         font-size: 12px;
+      }
+      .highlight {
+        background: rgba(255, 0, 0, 0.3);
+        border-radius: 4px;
+        padding: 1px 0;
       }
     </style>
   </head>
@@ -141,6 +147,15 @@
       let annotations = [];
       let currentSelection = null;
 
+      function escapeHtml(value) {
+        return value
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
       function selectionOffsets(container, range) {
         const preRange = range.cloneRange();
         preRange.selectNodeContents(container);
@@ -149,6 +164,29 @@
         preRange.setEnd(range.endContainer, range.endOffset);
         const end = preRange.toString().length;
         return { start, end };
+      }
+
+      function renderTextWithHighlights() {
+        if (!annotations.length) {
+          textBox.textContent = currentText;
+          return;
+        }
+
+        const sorted = [...annotations].sort((a, b) => a.start - b.start);
+        let cursor = 0;
+        const chunks = [];
+        sorted.forEach((annotation) => {
+          if (annotation.start > cursor) {
+            chunks.push(escapeHtml(currentText.slice(cursor, annotation.start)));
+          }
+          const highlighted = escapeHtml(currentText.slice(annotation.start, annotation.end));
+          chunks.push(`<span class="highlight">${highlighted}</span>`);
+          cursor = annotation.end;
+        });
+        if (cursor < currentText.length) {
+          chunks.push(escapeHtml(currentText.slice(cursor)));
+        }
+        textBox.innerHTML = chunks.join("");
       }
 
       function renderAnnotations() {
@@ -227,6 +265,7 @@
         annotations = [...annotations, annotation];
         Streamlit.setComponentValue(annotations);
         renderAnnotations();
+        renderTextWithHighlights();
       }
 
       textBox.addEventListener("mouseup", onMouseUp);
@@ -237,7 +276,7 @@
         currentText = text || "";
         currentLabels = labels || [];
         annotations = incomingAnnotations || [];
-        textBox.textContent = currentText;
+        renderTextWithHighlights();
         renderLabels();
         renderAnnotations();
         updateSelectionInfo();
