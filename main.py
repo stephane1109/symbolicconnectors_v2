@@ -16,6 +16,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from connecteurs import get_selected_connectors  # noqa: E402
+from addannotations import render_manual_annotations  # noqa: E402
 from onglets import (  # noqa: E402
     parse_upload,
     rendu_connecteurs,
@@ -129,10 +130,35 @@ def main() -> None:
         "une ligne de variables, par exemple `**** *model_gpt *prompt_1`."
     )
 
-    _dictionary_import.render_dictionary_selector()
+    mode_choice = st.radio(
+        "Mode de travail",
+        ["Analyser un corpus", "Annoter un texte"],
+        horizontal=True,
+    )
 
-    uploaded_file = st.file_uploader("Fichier IRaMuTeQ", type=["txt"])  # type: ignore[assignment]
+    if mode_choice == "Analyser un corpus":
+        _dictionary_import.render_dictionary_selector()
+    else:
+        st.info(
+            "Importez un texte brut pour l'annoter puis définissez vos labels avant de "
+            "générer le fichier JSON."
+        )
+
+    upload_label = "Fichier texte"
+    if mode_choice == "Analyser un corpus":
+        upload_label = "Fichier IRaMuTeQ"
+
+    uploaded_file = st.file_uploader(upload_label, type=["txt"])  # type: ignore[assignment]
     content = _load_uploaded_content(uploaded_file)
+
+    if mode_choice == "Annoter un texte":
+        if content is None:
+            st.info("Téléversez un fichier texte pour commencer l'annotation.")
+            return
+
+        st.subheader("Annotation de texte")
+        render_manual_annotations(content)
+        return
 
     tabs = st.tabs(
         [
