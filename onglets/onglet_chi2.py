@@ -43,12 +43,24 @@ def _afficher_residus_heatmap(residus: pd.DataFrame) -> None:
 
     vmax = float(residus_long["Résidu"].abs().max()) if not residus_long.empty else 1.0
 
+    cell_size = 28
     heatmap = (
         alt.Chart(residus_long)
         .mark_rect()
         .encode(
-            x=alt.X("Colonne:N", sort=colonnes, title="Colonnes", axis=alt.Axis(labelAngle=-45)),
-            y=alt.Y("Modalité:N", sort=modalites, title="Modalités"),
+            x=alt.X(
+                "Colonne:N",
+                sort=colonnes,
+                title="Colonnes",
+                axis=alt.Axis(labelAngle=-45),
+                scale=alt.Scale(paddingInner=0, paddingOuter=0),
+            ),
+            y=alt.Y(
+                "Modalité:N",
+                sort=modalites,
+                title="Modalités",
+                scale=alt.Scale(paddingInner=0, paddingOuter=0),
+            ),
             color=alt.Color(
                 "Résidu:Q",
                 scale=alt.Scale(scheme="redblue", domain=[-vmax, vmax], domainMid=0),
@@ -60,10 +72,14 @@ def _afficher_residus_heatmap(residus: pd.DataFrame) -> None:
                 alt.Tooltip("Résidu:Q", format=".2f"),
             ],
         )
-        .properties(title="Sur et sous-représentations (écarts à l’attendu)")
+        .properties(
+            title="Sur et sous-représentations (écarts à l’attendu)",
+            width=alt.Step(cell_size),
+            height=alt.Step(cell_size),
+        )
     )
 
-    st.altair_chart(heatmap, use_container_width=True)
+    st.altair_chart(heatmap, use_container_width=False)
 
 
 def _afficher_resultats(affichage: ResultatChiDeux) -> None:
