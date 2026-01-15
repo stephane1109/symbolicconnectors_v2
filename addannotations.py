@@ -2,29 +2,11 @@
 from __future__ import annotations
 
 import json
-import importlib.util
-from pathlib import Path
-from typing import Callable, List, Optional
+from typing import List
 
 import pandas as pd
 import streamlit as st
-
-TextLabeler = Callable[[str, List[str]], List[dict]]
-
-
-def _load_text_labeler() -> Optional[TextLabeler]:
-    spec = importlib.util.find_spec("streamlit_annotation_tools")
-    if spec is None or spec.origin is None:
-        return None
-
-    package_dir = Path(spec.origin).parent
-    build_dir = package_dir / "frontend" / "build"
-    if not build_dir.exists():
-        return None
-
-    from streamlit_annotation_tools import text_labeler
-
-    return text_labeler
+from streamlit_annotation_tools import text_labeler
 
 
 def render_manual_annotations(flattened_text: str) -> None:
@@ -74,13 +56,7 @@ def render_manual_annotations(flattened_text: str) -> None:
         st.info("Ajoutez au moins un label pour annoter le texte.")
 
     st.markdown("#### Annotation par surlignage")
-    text_labeler = _load_text_labeler()
-    if text_labeler is None:
-        st.error(
-            "Le composant d'annotation n'est pas disponible (frontend manquant). "
-            "Vérifiez l'installation de streamlit-annotation-tools sur Streamlit Cloud."
-        )
-    elif labels_state:
+    if labels_state:
         annotations_state[:] = text_labeler(
             raw_text,
             labels_state,
