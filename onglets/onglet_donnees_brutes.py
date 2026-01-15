@@ -15,13 +15,11 @@ sur les connecteurs.
   graphiques.
 """
 from __future__ import annotations
-
 from typing import Dict, List, Optional, Tuple
 
 import altair as alt
 import pandas as pd
 import streamlit as st
-
 from analyses import (
     annotate_connectors_html,
     build_label_style_block,
@@ -108,7 +106,6 @@ def rendu_donnees_brutes(
         mime="text/html",
     )
 
-    st.markdown("---")
     st.subheader("Statistiques des connecteurs")
 
     stats_df = count_connectors(combined_text, filtered_connectors)
