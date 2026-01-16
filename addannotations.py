@@ -8,7 +8,6 @@ from st_annotator import text_annotator
 
 
 def render_manual_annotations() -> None:
-    st.set_page_config(page_title="Text Annotator Tool", layout="wide")
     st.title("Text Annotator Tool")
 
     label_colors = {
