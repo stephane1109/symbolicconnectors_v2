@@ -48,14 +48,6 @@ def render_manual_annotations() -> None:
             key="annotator_main",
         )
 
-    st.divider()
-    st.subheader("Enregistrement des données au format json")
-    st.caption(
-        "Le fichier exporté associe chaque mot ou segment annoté à son label "
-        "(exemple : `{ \"sinon\": \"NOM DU LABEL\" }`). Si un mot est associé à plusieurs labels, "
-        "la valeur devient une liste."
-    )
-
     annotations_data = []
     if results:
         if isinstance(results, str):
@@ -66,16 +58,16 @@ def render_manual_annotations() -> None:
         else:
             annotations_data = results
 
+    word_label_rows = []
+    label_summary = {}
+    annotations_mapping: dict[str, str | list[str]] = {}
     if annotations_data:
-        st.success(f"{len(annotations_data)} annotation(s) détectée(s).")
-
-        label_summary = {}
-        annotations_mapping: dict[str, str | list[str]] = {}
         for annotation in annotations_data:
             label = annotation.get("label", "")
             text_value = annotation.get("text", "").strip()
             if not label or not text_value:
                 continue
+            word_label_rows.append({"Mot": text_value, "Label": label})
             label_summary.setdefault(label, []).append(text_value)
             if text_value in annotations_mapping:
                 existing = annotations_mapping[text_value]
@@ -86,6 +78,23 @@ def render_manual_annotations() -> None:
                     annotations_mapping[text_value] = [existing, label]
             else:
                 annotations_mapping[text_value] = label
+
+    if word_label_rows:
+        st.markdown("**Tableau récapitulatif des mots annotés**")
+        st.dataframe(pd.DataFrame(word_label_rows), use_container_width=True)
+    else:
+        st.info("Aucun mot annoté pour le moment.")
+
+    st.divider()
+    st.subheader("Enregistrement des données au format json")
+    st.caption(
+        "Le fichier exporté associe chaque mot ou segment annoté à son label "
+        "(exemple : `{ \"sinon\": \"NOM DU LABEL\" }`). Si un mot est associé à plusieurs labels, "
+        "la valeur devient une liste."
+    )
+
+    if annotations_data:
+        st.success(f"{len(annotations_data)} annotation(s) détectée(s).")
 
         if label_summary:
             label_rows = [
