@@ -33,21 +33,20 @@ def render_manual_annotations() -> None:
         "Le clic droit de la souris sur la zone annotée vous donne les informations."
     )
     st.caption(
-        "Pour retirer un mot d'un label, utilisez le bouton de suppression dans la liste des annotations. "
-        "Pour supprimer un label, utilisez la section de gestion des labels ci-dessous."
+        "Pour retirer un mot d'un label, utilisez le bouton de suppression dans la liste des annotations."
     )
 
     if "annotation_labels" not in st.session_state:
-        st.session_state.annotation_labels = []
-
-    st.markdown("**Gestion des labels**")
-    new_label = st.text_input("Ajouter un label", key="annotation_new_label")
-    add_label_clicked = st.button("Ajouter le label", disabled=not new_label.strip())
-    if add_label_clicked:
-        label_value = new_label.strip()
-        if label_value not in st.session_state.annotation_labels:
-            st.session_state.annotation_labels.append(label_value)
-        st.session_state.annotation_new_label = ""
+        st.session_state.annotation_labels = ["label_input"]
+    elif not isinstance(st.session_state.annotation_labels, list):
+        st.session_state.annotation_labels = ["label_input"]
+    else:
+        normalized_labels = [
+            label for label in st.session_state.annotation_labels if isinstance(label, str) and label.strip()
+        ]
+        if not normalized_labels:
+            normalized_labels = ["label_input"]
+        st.session_state.annotation_labels = normalized_labels
 
     with st.container(height=500, border=True):
         results = text_annotator(
@@ -77,25 +76,42 @@ def render_manual_annotations() -> None:
             annotations_data = results
 
     if annotations_data:
-        st.success(f"{len(annotations_data)} annotation(s) détectée(s).")
+        if isinstance(annotations_data, dict):
+            annotations_iterable = [
+                {"text": text_value, "label": label_value}
+                for text_value, label_value in annotations_data.items()
+            ]
+        elif isinstance(annotations_data, list):
+            annotations_iterable = annotations_data
+        else:
+            annotations_iterable = []
 
-        label_summary = {}
+        st.success(f"{len(annotations_iterable)} annotation(s) détectée(s).")
+
+        label_summary: dict[str, list[str]] = {}
         annotations_mapping: dict[str, str | list[str]] = {}
-        for annotation in annotations_data:
-            label = annotation.get("label", "")
-            text_value = annotation.get("text", "").strip()
-            if not label or not text_value:
+        for annotation in annotations_iterable:
+            if not isinstance(annotation, dict):
                 continue
-            label_summary.setdefault(label, []).append(text_value)
-            if text_value in annotations_mapping:
-                existing = annotations_mapping[text_value]
-                if isinstance(existing, list):
-                    if label not in existing:
-                        existing.append(label)
-                elif existing != label:
-                    annotations_mapping[text_value] = [existing, label]
-            else:
-                annotations_mapping[text_value] = label
+            label_value = annotation.get("label", "")
+            labels = label_value if isinstance(label_value, list) else [label_value]
+            text_value = str(annotation.get("text", "")).strip()
+            if not text_value:
+                continue
+
+            for label in labels:
+                if not label:
+                    continue
+                label_summary.setdefault(label, []).append(text_value)
+                if text_value in annotations_mapping:
+                    existing = annotations_mapping[text_value]
+                    if isinstance(existing, list):
+                        if label not in existing:
+                            existing.append(label)
+                    elif existing != label:
+                        annotations_mapping[text_value] = [existing, label]
+                else:
+                    annotations_mapping[text_value] = label
 
         if label_summary:
             label_rows = [
