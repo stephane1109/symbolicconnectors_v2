@@ -2,9 +2,35 @@
 from __future__ import annotations
 
 import json
+from typing import Any, Dict, List
 
+import pandas as pd
 import streamlit as st
 from st_annotator import text_annotator
+
+
+def _build_annotation_rows(annotations: List[Any]) -> List[Dict[str, str]]:
+    rows: List[Dict[str, str]] = []
+    for entry in annotations:
+        if not isinstance(entry, dict):
+            continue
+        text_value = entry.get("text") or entry.get("token") or entry.get("value")
+        label_value = entry.get("label") or entry.get("tag") or entry.get("category")
+        if text_value is None or label_value is None:
+            continue
+        rows.append({"Texte": str(text_value), "Label": str(label_value)})
+    return rows
+
+
+def _build_markdown_table(rows: List[Dict[str, str]]) -> str:
+    if not rows:
+        return ""
+    lines = ["| Texte | Label |", "| --- | --- |"]
+    for row in rows:
+        text_value = row.get("Texte", "").replace("|", "\\|")
+        label_value = row.get("Label", "").replace("|", "\\|")
+        lines.append(f"| {text_value} | {label_value} |")
+    return "\n".join(lines)
 
 
 def render_manual_annotations() -> None:
@@ -34,7 +60,7 @@ def render_manual_annotations() -> None:
         st.divider()
         st.subheader("Enregistrement des annotations")
 
-        annotations_data = []
+        annotations_data: List[Any] = []
         if results:
             if isinstance(results, str):
                 try:
@@ -45,19 +71,36 @@ def render_manual_annotations() -> None:
                 annotations_data = results
 
         if annotations_data:
-            st.success(f"{len(annotations_data)} annotation(s) détectée(s).")
+            annotation_rows = _build_annotation_rows(annotations_data)
+            st.success(f"{len(annotation_rows)} annotation(s) détectée(s).")
 
-            with st.expander("Voir le détail des labels"):
-                st.json(annotations_data)
+            if annotation_rows:
+                annotation_df = pd.DataFrame(annotation_rows)
+                with st.expander("Voir le détail des labels"):
+                    st.dataframe(annotation_df, use_container_width=True)
 
-            json_string = json.dumps(annotations_data, indent=4, ensure_ascii=False)
-            st.download_button(
-                label="Enregistrer le fichier JSON",
-                data=json_string,
-                file_name="annotations.json",
-                mime="application/json",
-                use_container_width=True,
-            )
+                json_mapping = {row["Texte"]: row["Label"] for row in annotation_rows}
+                json_string = json.dumps(json_mapping, indent=4, ensure_ascii=False)
+                st.download_button(
+                    label="Enregistrer le fichier JSON",
+                    data=json_string,
+                    file_name="annotations.json",
+                    mime="application/json",
+                    use_container_width=True,
+                )
+
+                markdown_content = _build_markdown_table(annotation_rows)
+                st.download_button(
+                    label="Exporter les labels (Markdown)",
+                    data=markdown_content,
+                    file_name="annotations.md",
+                    mime="text/markdown",
+                    use_container_width=True,
+                )
+            else:
+                st.warning(
+                    "Les annotations reçues ne contiennent pas de labels exploitables."
+                )
         else:
             st.warning(
                 "Aucune annotation n'a été faite pour le moment. Double-cliquez sur un mot dans la zone ci-dessus."
