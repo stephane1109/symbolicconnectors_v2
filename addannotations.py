@@ -30,7 +30,7 @@ def render_manual_annotations() -> None:
         st.error("Impossible de décoder le fichier téléversé en UTF-8.")
         return
 
-    st.subheader("📝 Zone d'annotation")
+    st.subheader("Annotation")
     st.info("Double-cliquez sur un mot pour l'annoter. La zone ci-dessous est défilante.")
 
     with st.container(height=500, border=True):
@@ -43,7 +43,7 @@ def render_manual_annotations() -> None:
         )
 
     st.divider()
-    st.subheader("💾 Enregistrement des données")
+    st.subheader("Enregistrement des données au format json")
 
     annotations_data = []
     if results:
@@ -63,7 +63,7 @@ def render_manual_annotations() -> None:
 
         json_string = json.dumps(annotations_data, indent=4, ensure_ascii=False)
         st.download_button(
-            label="📥 ENREGISTRER LE FICHIER JSON",
+            label="Enregistrer le fichier json",
             data=json_string,
             file_name="mes_annotations.json",
             mime="application/json",
