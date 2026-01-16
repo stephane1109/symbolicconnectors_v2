@@ -8,7 +8,7 @@ from st_annotator import text_annotator
 
 
 def render_manual_annotations() -> None:
-    st.title("Text Annotator Tool")
+    st.title("Annotation d'un texte")
 
     label_colors = {
         "label_input": "#ff9500",
@@ -20,7 +20,7 @@ def render_manual_annotations() -> None:
         text = uploaded_file.getvalue().decode("utf-8")
 
         st.subheader("Annotation du texte")
-        st.info("Double-cliquez sur un mot pour l'annoter. clic droit de la souris pour visualiser l'information")
+        st.info("Double-cliquez sur un mot pour l'annoter. Vous pouvez surligner un passage entier. clic droit de la souris pour visualiser l'information")
 
         with st.container(height=500, border=True):
             results = text_annotator(
@@ -54,7 +54,7 @@ def render_manual_annotations() -> None:
             st.download_button(
                 label="Enregistrer le fichier JSON",
                 data=json_string,
-                file_name="mes_annotations.json",
+                file_name="annotations.json",
                 mime="application/json",
                 use_container_width=True,
             )
