@@ -28,17 +28,30 @@ def _iter_annotation_items(value: Any) -> Iterable[Dict[str, Any]]:
         yield value
 
 
+def _resolve_label(
+    mapping_label: Optional[str],
+    item_label: Optional[str],
+    snippet: Optional[str],
+) -> Optional[str]:
+    if item_label and snippet and item_label != snippet:
+        return item_label
+    if mapping_label:
+        return mapping_label
+    return item_label
+
+
 def _extract_rows_from_mapping(
     text: str, label: str, items: Any
 ) -> List[Dict[str, str]]:
     rows: List[Dict[str, str]] = []
     for item in _iter_annotation_items(items):
-        raw_label = item.get("label") or item.get("tag") or item.get("category") or label
+        item_label = item.get("label") or item.get("tag") or item.get("category")
         start = item.get("start") or item.get("start_offset") or item.get("startOffset")
         end = item.get("end") or item.get("end_offset") or item.get("endOffset")
         snippet = _slice_text(text, start, end)
         if snippet is None:
             snippet = item.get("text") or item.get("token") or item.get("value")
+        raw_label = _resolve_label(label, item_label, snippet)
         if snippet is None or raw_label is None:
             continue
         rows.append({"Texte": str(snippet), "Label": str(raw_label)})
@@ -63,12 +76,19 @@ def _build_annotation_rows(text: str, annotations: Any) -> List[Dict[str, str]]:
                 rows.extend(_extract_rows_from_mapping(text, str(label), items))
                 continue
             if isinstance(entry, dict):
-                label = entry.get("label") or entry.get("tag") or entry.get("category")
+                label = (
+                    entry.get("label")
+                    or entry.get("tag")
+                    or entry.get("category")
+                    or entry.get("label_name")
+                    or entry.get("name")
+                )
                 start = entry.get("start") or entry.get("start_offset") or entry.get("startOffset")
                 end = entry.get("end") or entry.get("end_offset") or entry.get("endOffset")
                 snippet = _slice_text(text, start, end)
                 if snippet is None:
                     snippet = entry.get("text") or entry.get("token") or entry.get("value")
+                label = _resolve_label(None, label, snippet)
                 if snippet is None or label is None:
                     continue
                 rows.append({"Texte": str(snippet), "Label": str(label)})
