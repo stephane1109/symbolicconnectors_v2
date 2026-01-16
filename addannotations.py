@@ -33,21 +33,11 @@ def render_manual_annotations() -> None:
         "Le clic droit de la souris sur la zone annotée vous donne les informations."
     )
     st.caption(
-        "Pour retirer un mot d'un label, utilisez le bouton de suppression dans la liste des annotations. "
-        "Pour supprimer un label, utilisez la section de gestion des labels ci-dessous."
+        "Pour retirer un mot d'un label, utilisez le bouton de suppression dans la liste des annotations."
     )
 
     if "annotation_labels" not in st.session_state:
-        st.session_state.annotation_labels = []
-
-    st.markdown("**Gestion des labels**")
-    new_label = st.text_input("Ajouter un label", key="annotation_new_label")
-    add_label_clicked = st.button("Ajouter le label", disabled=not new_label.strip())
-    if add_label_clicked:
-        label_value = new_label.strip()
-        if label_value not in st.session_state.annotation_labels:
-            st.session_state.annotation_labels.append(label_value)
-        st.session_state.annotation_new_label = ""
+        st.session_state.annotation_labels = ["label_input"]
 
     with st.container(height=500, border=True):
         results = text_annotator(
