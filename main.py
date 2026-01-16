@@ -136,29 +136,17 @@ def main() -> None:
         horizontal=True,
     )
 
-    if mode_choice == "Analyser un corpus":
-        _dictionary_import.render_dictionary_selector()
-    else:
+    if mode_choice == "Annoter un texte":
         st.info(
             "Importez un texte brut pour l'annoter puis définissez vos labels avant de "
             "générer le fichier JSON."
         )
-
-    upload_label = "Fichier texte"
-    if mode_choice == "Analyser un corpus":
-        upload_label = "Fichier IRaMuTeQ"
-
-    uploaded_file = st.file_uploader(upload_label, type=["txt"])  # type: ignore[assignment]
-    content = _load_uploaded_content(uploaded_file)
-
-    if mode_choice == "Annoter un texte":
-        if content is None:
-            st.info("Téléversez un fichier texte pour commencer l'annotation.")
-            return
-
-        st.subheader("Annotation de texte")
-        render_manual_annotations(content)
+        render_manual_annotations()
         return
+
+    _dictionary_import.render_dictionary_selector()
+    uploaded_file = st.file_uploader("Fichier IRaMuTeQ", type=["txt"])  # type: ignore[assignment]
+    content = _load_uploaded_content(uploaded_file)
 
     tabs = st.tabs(
         [
