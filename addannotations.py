@@ -49,22 +49,6 @@ def render_manual_annotations() -> None:
             st.session_state.annotation_labels.append(label_value)
         st.session_state.annotation_new_label = ""
 
-    labels_to_remove = st.multiselect(
-        "Supprimer des labels",
-        options=st.session_state.annotation_labels,
-        key="annotation_labels_to_remove",
-    )
-    remove_labels_clicked = st.button(
-        "Supprimer les labels sélectionnés", disabled=not labels_to_remove
-    )
-    if remove_labels_clicked:
-        st.session_state.annotation_labels = [
-            label
-            for label in st.session_state.annotation_labels
-            if label not in labels_to_remove
-        ]
-        st.session_state.annotation_labels_to_remove = []
-
     with st.container(height=500, border=True):
         results = text_annotator(
             text=text,
