@@ -11,10 +11,6 @@ def render_manual_annotations() -> None:
     st.title("Text Annotator Tool")
 
     label_colors = {
-        "PERSONNE": "#8ef",
-        "LIEU": "#faa",
-        "DATE": "#fea",
-        "ORGANISATION": "#3478f6",
         "label_input": "#ff9500",
     }
 
@@ -23,8 +19,8 @@ def render_manual_annotations() -> None:
     if uploaded_file is not None:
         text = uploaded_file.getvalue().decode("utf-8")
 
-        st.subheader("📝 Zone d'annotation")
-        st.info("Double-cliquez sur un mot pour l'annoter. La zone ci-dessous est défilante.")
+        st.subheader("Annotation du texte")
+        st.info("Double-cliquez sur un mot pour l'annoter. clic droit de la souris pour visualiser l'information")
 
         with st.container(height=500, border=True):
             results = text_annotator(
@@ -36,7 +32,7 @@ def render_manual_annotations() -> None:
             )
 
         st.divider()
-        st.subheader("💾 Enregistrement des données")
+        st.subheader("Enregistrement des annotations")
 
         annotations_data = []
         if results:
@@ -56,7 +52,7 @@ def render_manual_annotations() -> None:
 
             json_string = json.dumps(annotations_data, indent=4, ensure_ascii=False)
             st.download_button(
-                label="📥 ENREGISTRER LE FICHIER JSON",
+                label="Enregistrer le fichier JSON",
                 data=json_string,
                 file_name="mes_annotations.json",
                 mime="application/json",
