@@ -2,123 +2,65 @@
 from __future__ import annotations
 
 import json
-import importlib
-import importlib.util
-import inspect
-from pathlib import Path
-from typing import Callable, List, Optional
 
-import pandas as pd
 import streamlit as st
 from streamlit.components.v1 import declare_component
 
-TextLabeler = Callable[[str, List[str], str], List[dict]]
-
-_LOCAL_COMPONENT_PATH = Path(__file__).resolve().parent / "components" / "text_annotator"
-_local_text_annotator = declare_component(
-    "local_text_annotator",
-    path=str(_LOCAL_COMPONENT_PATH),
-)
-
-
-def _wrap_text_labeler(text_labeler: Callable[..., List[dict]]) -> TextLabeler:
-    signature = inspect.signature(text_labeler)
-    accepts_key = "key" in signature.parameters or any(
-        parameter.kind == inspect.Parameter.VAR_KEYWORD
-        for parameter in signature.parameters.values()
-    )
-
-    def _labeler(text: str, labels: List[str], key: str) -> List[dict]:
-        kwargs = {"key": key} if accepts_key else {}
-        return text_labeler(text, labels, **kwargs)
-
-    return _labeler
-
-
-def _load_text_labeler() -> Optional[TextLabeler]:
-    candidates = (
-        ("st_annotator", ("st_annotate",)),
-        ("streamlit_annotator", ("text_annotator", "st_annotate", "annotate")),
-    )
-
-    for module_name, attributes in candidates:
-        spec = importlib.util.find_spec(module_name)
-        if spec is None:
-            continue
-
-        module = importlib.import_module(module_name)
-        for attribute in attributes:
-            text_labeler = getattr(module, attribute, None)
-            if callable(text_labeler):
-                return _wrap_text_labeler(text_labeler)
-
-    return None
-
 
 def render_manual_annotations(flattened_text: str) -> None:
-    st.markdown("---")
-    raw_text = flattened_text
+    label_colors = {
+        "PERSONNE": "#8ef",
+        "LIEU": "#faa",
+        "DATE": "#fea",
+        "ORGANISATION": "#3478f6",
+        "label_input": "#ff9500",
+    }
 
-    annotations_state = st.session_state.setdefault("manual_annotations", [])
-    labels_state = st.session_state.setdefault("annotation_labels", [])
+    st.subheader("📝 Zone d'annotation")
+    st.info("Double-cliquez sur un mot pour l'annoter. La zone ci-dessous est défilante.")
 
-    label_input = st.text_input("Nouveau label", key="annotation_label_input")
-    add_label = st.button("Ajouter le label")
-    if add_label:
-        cleaned_label = label_input.strip()
-        if not cleaned_label:
-            st.error("Veuillez saisir un label non vide.")
-        elif cleaned_label in labels_state:
-            st.warning("Ce label existe déjà.")
-        else:
-            labels_state.append(cleaned_label)
-            st.success("Label ajouté.")
+    try:
+        from st_annotator import text_annotator
+    except ModuleNotFoundError:
+        st.error("Le module st_annotator est requis pour annoter le texte.")
+        return
 
-    if labels_state:
-        labels_to_remove = st.multiselect(
-            "Labels existants (sélectionner pour supprimer)",
-            options=labels_state,
-            key="annotation_labels_remove",
+    with st.container(height=500, border=True):
+        results = text_annotator(
+            text=flattened_text,
+            labels={},
+            in_snake_case=False,
+            colors=label_colors,
+            key="annotator_main",
         )
-        if st.button("Supprimer les labels sélectionnés"):
-            remaining_labels = [label for label in labels_state if label not in labels_to_remove]
-            labels_state.clear()
-            labels_state.extend(remaining_labels)
-            st.info("Labels mis à jour.")
-    else:
-        st.info("Ajoutez au moins un label pour annoter le texte.")
 
-    st.markdown("#### Annotation par surlignage")
-    text_labeler = _load_text_labeler()
-    if text_labeler is None:
-        if labels_state:
-            component_value = _local_text_annotator(
-                text=raw_text,
-                labels=labels_state,
-                annotations=annotations_state,
-                key="manual_annotation_component",
-            )
-            if component_value is not None:
-                annotations_state[:] = component_value
+    st.divider()
+    st.subheader("💾 Enregistrement des données")
+
+    annotations_data = []
+    if results:
+        if isinstance(results, str):
+            try:
+                annotations_data = json.loads(results)
+            except json.JSONDecodeError:
+                st.error("Format de données invalide reçu du composant.")
         else:
-            st.info("Ajoutez au moins un label pour activer la sélection par surlignage.")
-    elif labels_state:
-        annotations_state[:] = text_labeler(
-            raw_text,
-            labels_state,
-            "manual_annotation_labeler",
+            annotations_data = results
+
+    if annotations_data:
+        st.success(f"{len(annotations_data)} annotation(s) détectée(s).")
+        with st.expander("Voir le détail des labels"):
+            st.json(annotations_data)
+
+        json_string = json.dumps(annotations_data, indent=4, ensure_ascii=False)
+        st.download_button(
+            label="📥 ENREGISTRER LE FICHIER JSON",
+            data=json_string,
+            file_name="mes_annotations.json",
+            mime="application/json",
+            use_container_width=True,
         )
     else:
-        st.info("Ajoutez au moins un label pour activer la sélection par surlignage.")
-
-    if annotations_state:
-        st.markdown("#### Aperçu des annotations")
-        st.dataframe(pd.DataFrame(annotations_state), use_container_width=True)
-
-    annotations_payload = {item.get("text", ""): item.get("label", "") for item in annotations_state}
-    st.download_button(
-        "Télécharger le JSON des annotations",
-        data=json.dumps(annotations_payload, ensure_ascii=False, indent=2),
-        file_name="annotations.json",
-        mime="application/json",
-    )
+        st.warning(
+            "Aucune annotation n'a été faite pour le moment. Double-cliquez sur un mot dans la zone ci-dessus."
+        )
