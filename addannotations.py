@@ -9,17 +9,13 @@ from st_annotator import text_annotator
 
 def render_manual_annotations() -> None:
     st.markdown("---")
-    st.subheader("Text Annotator Tool")
+    st.subheader("Annoter un texte")
 
     label_colors = {
-        "PERSONNE": "#8ef",
-        "LIEU": "#faa",
-        "DATE": "#fea",
-        "ORGANISATION": "#3478f6",
         "label_input": "#ff9500",
     }
 
-    uploaded_file = st.file_uploader("Upload a .txt file to annotate", type=["txt"])
+    uploaded_file = st.file_uploader("Telechargement d'un fichier texte .txt", type=["txt"])
     if uploaded_file is None:
         st.info("Veuillez charger un fichier .txt pour commencer.")
         return
@@ -31,7 +27,7 @@ def render_manual_annotations() -> None:
         return
 
     st.subheader("Annotation")
-    st.info("Double-cliquez sur un mot pour l'annoter. La zone ci-dessous est défilante.")
+    st.info("Double-cliquez sur un mot pour l'annoter. Vous pouvez également surligner le texte. Le clic droit de la souris sur la zone annotée vous donne les informations.")
 
     with st.container(height=500, border=True):
         results = text_annotator(
