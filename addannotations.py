@@ -38,6 +38,15 @@ def render_manual_annotations() -> None:
 
     if "annotation_labels" not in st.session_state:
         st.session_state.annotation_labels = ["label_input"]
+    elif not isinstance(st.session_state.annotation_labels, list):
+        st.session_state.annotation_labels = ["label_input"]
+    else:
+        normalized_labels = [
+            label for label in st.session_state.annotation_labels if isinstance(label, str) and label.strip()
+        ]
+        if not normalized_labels:
+            normalized_labels = ["label_input"]
+        st.session_state.annotation_labels = normalized_labels
 
     with st.container(height=500, border=True):
         results = text_annotator(
