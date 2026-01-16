@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 
 import streamlit as st
+from streamlit.components.v1 import declare_component
 
 
 def render_manual_annotations(flattened_text: str) -> None:
